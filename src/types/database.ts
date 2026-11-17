@@ -3,6 +3,28 @@ export type EventStatus = 'DRAFT' | 'OPEN' | 'IN_REVIEW' | 'AWARDED' | 'CLOSED';
 export type ResourceType = 'LABOR' | 'EQUIPMENT';
 export type CalculationMode = 'MULTIPLICATION' | 'DIVISION';
 export type ApuStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+export type AuditAction = 'CREATE' | 'READ' | 'UPDATE' | 'DELETE' | 'DENIED';
+
+export interface AuditLog {
+  id_log: string;
+  id_user?: string | null;
+  user_role: string;
+  action: AuditAction;
+  entity_type: string;
+  entity_id?: string | null;
+  details?: Record<string, any>;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  created_at: string;
+}
+
+export interface EventProviderAssignment {
+  id_assignment: string;
+  id_event: number;
+  id_provider: number;
+  access_role: 'READ' | 'WRITE' | 'SUBMITTED';
+  assigned_at: string;
+}
 
 export interface AppUser {
   id_user: string;

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import {
   EventDashboardView,
   Concept,
@@ -15,15 +16,15 @@ import { ApuWorkbenchModal } from '@/components/ApuWorkbenchModal';
 import { DirectPriceModal } from '@/components/DirectPriceModal';
 import { AddConceptModal } from '@/components/AddConceptModal';
 import { CatalogPickerModal, CatalogPickerType } from '@/components/CatalogPickerModal';
-import { 
-  AlertCircle, 
-  RefreshCw, 
-  Database, 
-  ArrowLeft, 
-  Layers, 
-  FileText, 
-  CheckCircle2, 
-  Building, 
+import {
+  AlertCircle,
+  RefreshCw,
+  Database,
+  ArrowLeft,
+  Layers,
+  FileText,
+  CheckCircle2,
+  Building,
   PlusCircle,
   Clock,
   Box,
@@ -32,6 +33,7 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
+  const { user, activeEvent, setActiveEvent } = useAuth();
   const [events, setEvents] = useState<EventDashboardView[]>([]);
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [catalogMaterials, setCatalogMaterials] = useState<CatalogMaterial[]>([]);
@@ -109,6 +111,30 @@ export default function DashboardPage() {
     loadData();
   }, [loadData]);
 
+  // Sync activeEvent from auth-context if set (e.g. from magic link verification)
+  useEffect(() => {
+    if (activeEvent && events.length > 0 && (!selectedEvent || selectedEvent.id_event !== activeEvent.id_event)) {
+      const match = events.find((e) => e.id_event === activeEvent.id_event);
+      if (match) setSelectedEvent(match);
+    }
+  }, [activeEvent, events, selectedEvent]);
+
+  const handleSelectEvent = (ev: EventDashboardView) => {
+    setSelectedEvent(ev);
+    setActiveEvent({
+      id_event: ev.id_event,
+      tag_event: ev.tag_event,
+      event_type: ev.event_type,
+      client_name: ev.client_name,
+      provider_name: user?.provider_name || undefined,
+    });
+  };
+
+  const handleBackToEvents = () => {
+    setSelectedEvent(null);
+    setActiveEvent(null);
+  };
+
   // Filter concepts belonging to the currently selected event
   const currentEventConcepts = useMemo(() => {
     if (!selectedEvent) return [];
@@ -122,6 +148,8 @@ export default function DashboardPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         conceptId,
+        userId: user?.id_user,
+        userRole: user?.role,
         ...apuData,
       }),
     });
@@ -249,9 +277,9 @@ export default function DashboardPage() {
                 <EventCard
                   key={ev.id_event}
                   event={ev}
-                  onOpenCatalog={() => setSelectedEvent(ev)}
+                  onOpenCatalog={() => handleSelectEvent(ev)}
                   onAddConcept={() => {
-                    setSelectedEvent(ev);
+                    handleSelectEvent(ev);
                     setIsAddConceptOpen(true);
                   }}
                 />
@@ -265,7 +293,7 @@ export default function DashboardPage() {
           {/* Breadcrumb & Navigation Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <button
-              onClick={() => setSelectedEvent(null)}
+              onClick={handleBackToEvents}
               className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-300 px-3.5 py-2 rounded-lg transition-colors cursor-pointer shadow-2xs self-start"
             >
               <ArrowLeft className="w-4 h-4 text-slate-500" />
@@ -357,7 +385,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-md">
                     <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-                    <span><strong className="text-emerald-950">Contratista Asignado:</strong> MHEBOSAP, S.A. DE C.V.</span>
+                    <span><strong className="text-emerald-950">Contratista Asignado:</strong> {user?.role === 'PROVIDER_ESTIMATOR' && user.provider_name ? user.provider_name : 'MHEBOSAP, S.A. DE C.V.'}</span>
                   </div>
                 </div>
               </div>
@@ -367,7 +395,7 @@ export default function DashboardPage() {
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-semibold text-slate-700 flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-emerald-600" />
-                    Avance General del Concurso
+                    Avance APU
                   </span>
                   <span className="font-bold text-slate-900">
                     {selectedEvent.overall_completion_percentage}%

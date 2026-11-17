@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { logAudit, extractRequestMeta } from '@/lib/audit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -167,6 +168,26 @@ export async function POST(req: NextRequest) {
       .eq('id_concept', conceptId);
 
     if (conceptUpdateErr) throw conceptUpdateErr;
+
+    // 9. Write audit record
+    const meta = extractRequestMeta(req);
+    await logAudit({
+      userId: body.userId || null,
+      userRole: body.userRole || 'PROVIDER_ESTIMATOR',
+      action: 'UPDATE',
+      entityType: 'APU',
+      entityId: String(conceptId),
+      details: {
+        id_apu: apuId,
+        conceptPrice: apuOutputs.conceptPrice,
+        conceptPriceTxt: apuOutputs.conceptPriceTxt,
+        materialsCount: materials?.length || 0,
+        laborCount: labor?.length || 0,
+        equipmentCount: equipment?.length || 0,
+      },
+      ipAddress: meta.ipAddress,
+      userAgent: meta.userAgent,
+    });
 
     return NextResponse.json({ success: true, id_apu: apuId });
   } catch (err: any) {
