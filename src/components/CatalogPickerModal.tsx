@@ -13,9 +13,9 @@ interface CatalogPickerModalProps {
   catalogMaterials: CatalogMaterial[];
   catalogLabor: CatalogLabor[];
   catalogEquipment: CatalogEquipment[];
-  onSelectMaterial: (item: CatalogMaterial) => void;
-  onSelectLabor: (item: CatalogLabor) => void;
-  onSelectEquipment: (item: CatalogEquipment) => void;
+  onSelectMaterial?: (item: CatalogMaterial) => void;
+  onSelectLabor?: (item: CatalogLabor) => void;
+  onSelectEquipment?: (item: CatalogEquipment) => void;
   onItemCreated: (type: CatalogPickerType, newItem: any) => void;
 }
 
@@ -184,9 +184,9 @@ export const CatalogPickerModal: React.FC<CatalogPickerModalProps> = ({
       onItemCreated(type, createdItem);
 
       // Automatically select and add to concept
-      if (type === 'MATERIAL') onSelectMaterial(createdItem);
-      if (type === 'LABOR') onSelectLabor(createdItem);
-      if (type === 'EQUIPMENT') onSelectEquipment(createdItem);
+      if (type === 'MATERIAL' && onSelectMaterial) onSelectMaterial(createdItem);
+      if (type === 'LABOR' && onSelectLabor) onSelectLabor(createdItem);
+      if (type === 'EQUIPMENT' && onSelectEquipment) onSelectEquipment(createdItem);
 
       // Reset form
       setIsCreating(false);
@@ -199,7 +199,10 @@ export const CatalogPickerModal: React.FC<CatalogPickerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150">
+    <div 
+      style={{ zIndex: 100 }}
+      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150"
+    >
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-4xl w-full h-[85vh] flex flex-col overflow-hidden">
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-900 text-white flex items-center justify-between shrink-0">
@@ -533,16 +536,22 @@ export const CatalogPickerModal: React.FC<CatalogPickerModalProps> = ({
                               : '—'}
                           </td>
                           <td className="py-2.5 px-3 text-center">
-                            <button
-                              onClick={() => {
-                                onSelectMaterial(m);
-                                onClose();
-                              }}
-                              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1 px-2.5 rounded text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                            >
-                              <Plus className="w-3 h-3" />
-                              <span>Asignar</span>
-                            </button>
+                            {onSelectMaterial ? (
+                              <button
+                                onClick={() => {
+                                  onSelectMaterial(m);
+                                  onClose();
+                                }}
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1 px-2.5 rounded text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>Asignar</span>
+                              </button>
+                            ) : (
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                                Activo
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -571,16 +580,22 @@ export const CatalogPickerModal: React.FC<CatalogPickerModalProps> = ({
                             ${Number(l.catalog_labor_unit_price).toFixed(2)}
                           </td>
                           <td className="py-2.5 px-3 text-center">
-                            <button
-                              onClick={() => {
-                                onSelectLabor(l);
-                                onClose();
-                              }}
-                              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-1 px-2.5 rounded text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                            >
-                              <Plus className="w-3 h-3" />
-                              <span>Asignar</span>
-                            </button>
+                            {onSelectLabor ? (
+                              <button
+                                onClick={() => {
+                                  onSelectLabor(l);
+                                  onClose();
+                                }}
+                                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-1 px-2.5 rounded text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>Asignar</span>
+                              </button>
+                            ) : (
+                              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                                Activo
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -616,16 +631,22 @@ export const CatalogPickerModal: React.FC<CatalogPickerModalProps> = ({
                               : '—'}
                           </td>
                           <td className="py-2.5 px-3 text-center">
-                            <button
-                              onClick={() => {
-                                onSelectEquipment(e);
-                                onClose();
-                              }}
-                              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-2.5 rounded text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                            >
-                              <Plus className="w-3 h-3" />
-                              <span>Asignar</span>
-                            </button>
+                            {onSelectEquipment ? (
+                              <button
+                                onClick={() => {
+                                  onSelectEquipment(e);
+                                  onClose();
+                                }}
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-2.5 rounded text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>Asignar</span>
+                              </button>
+                            ) : (
+                              <span className="text-[10px] font-bold text-blue-800 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                                Activo
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))
