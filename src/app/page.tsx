@@ -17,6 +17,7 @@ import { DirectPriceModal } from '@/components/DirectPriceModal';
 import { AddConceptModal } from '@/components/AddConceptModal';
 import { CatalogPickerModal, CatalogPickerType } from '@/components/CatalogPickerModal';
 import { InviteProviderModal } from '@/components/InviteProviderModal';
+import { LoginScreen } from '@/components/LoginScreen';
 import {
   AlertCircle,
   RefreshCw,
@@ -37,6 +38,7 @@ export default function DashboardPage() {
   const {
     user,
     activeEvent,
+    isLoadingAuth,
     setActiveEvent,
     isInviteModalOpen,
     inviteModalEventId,
@@ -117,8 +119,10 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (user) {
+      loadData();
+    }
+  }, [user, loadData]);
 
   // Sync activeEvent from auth-context if set (e.g. from magic link verification)
   useEffect(() => {
@@ -224,6 +228,21 @@ export default function DashboardPage() {
     // Refresh UI
     await loadData();
   };
+
+  // Auth Guard: Show loader while restoring session
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-3">
+        <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin" />
+        <p className="text-xs text-slate-500 font-medium">Verificando credenciales de acceso...</p>
+      </div>
+    );
+  }
+
+  // Auth Guard: Require login to enter APU studio
+  if (!user) {
+    return <LoginScreen />;
+  }
 
   return (
     <div className="space-y-6">

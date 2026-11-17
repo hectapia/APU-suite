@@ -90,6 +90,14 @@ export function HeaderNav() {
           </div>
         )}
 
+        {/* Not Logged In Indicator */}
+        {!user && (
+          <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700/80 py-1.5 px-3 rounded-xl text-xs text-slate-300">
+            <Lock className="w-3.5 h-3.5 text-purple-400" />
+            <span className="font-semibold">Control de Acceso</span>
+          </div>
+        )}
+
         {/* User Profile & Persona Switcher */}
         {user && (
           <div className="relative">

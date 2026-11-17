@@ -23,9 +23,12 @@ export interface ActiveEventHeaderInfo {
 interface AuthContextType {
   user: AuthUser | null;
   activeEvent: ActiveEventHeaderInfo | null;
+  isLoadingAuth: boolean;
   setActiveEvent: (event: ActiveEventHeaderInfo | null) => void;
   login: (userData: AuthUser) => void;
   logout: () => void;
+  loginAsAdmin: (email?: string, name?: string) => void;
+  loginAsProvider: (email?: string, providerName?: string) => void;
   switchRole: (role: UserRole) => void;
   isInviteModalOpen: boolean;
   inviteModalEventId?: number;
@@ -33,7 +36,7 @@ interface AuthContextType {
   closeInviteModal: () => void;
 }
 
-const DEFAULT_ADMIN_USER: AuthUser = {
+export const DEFAULT_ADMIN_USER: AuthUser = {
   id_user: 'admin-001',
   email: 'admin.licitaciones@pemex.com',
   full_name: 'Ing. Administrador de Concursos',
@@ -42,12 +45,24 @@ const DEFAULT_ADMIN_USER: AuthUser = {
   provider_name: 'PEMEX Exploración y Producción',
 };
 
+export const DEFAULT_PROVIDER_USER: AuthUser = {
+  id_user: 'prov-001',
+  email: 'licitaciones@mhebosap.com.mx',
+  full_name: 'Ing. Fernando Tapia (Estimador)',
+  role: 'PROVIDER_ESTIMATOR',
+  id_provider: 1,
+  provider_name: 'MHEBOSAP, S.A. DE C.V.',
+};
+
 const AuthContext = createContext<AuthContextType>({
   user: null,
   activeEvent: null,
+  isLoadingAuth: true,
   setActiveEvent: () => {},
   login: () => {},
   logout: () => {},
+  loginAsAdmin: () => {},
+  loginAsProvider: () => {},
   switchRole: () => {},
   isInviteModalOpen: false,
   inviteModalEventId: undefined,
@@ -58,6 +73,8 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [activeEvent, setActiveEvent] = useState<ActiveEventHeaderInfo | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteModalEventId, setInviteModalEventId] = useState<number | undefined>(undefined);
 
@@ -72,16 +89,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Load persisted session from localStorage if present, else default to Admin
-    const stored = localStorage.getItem('apu_session_user');
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
-        setUser(DEFAULT_ADMIN_USER);
+    // Only restore existing session if user previously logged in
+    try {
+      const stored = localStorage.getItem('apu_session_user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.email) {
+          setUser(parsed);
+        }
       }
-    } else {
-      setUser(DEFAULT_ADMIN_USER);
+    } catch {
+      setUser(null);
+    } finally {
+      setIsLoadingAuth(false);
     }
   }, []);
 
@@ -93,21 +113,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     localStorage.removeItem('apu_session_user');
     setUser(null);
+    setActiveEvent(null);
+  };
+
+  const loginAsAdmin = (customEmail?: string, customName?: string) => {
+    const adminUser: AuthUser = {
+      ...DEFAULT_ADMIN_USER,
+      email: customEmail || DEFAULT_ADMIN_USER.email,
+      full_name: customName || DEFAULT_ADMIN_USER.full_name,
+    };
+    login(adminUser);
+  };
+
+  const loginAsProvider = (customEmail?: string, providerName?: string) => {
+    const provUser: AuthUser = {
+      ...DEFAULT_PROVIDER_USER,
+      email: customEmail || DEFAULT_PROVIDER_USER.email,
+      provider_name: providerName || DEFAULT_PROVIDER_USER.provider_name,
+    };
+    login(provUser);
   };
 
   const switchRole = (newRole: UserRole) => {
     if (newRole === 'ADMIN') {
-      login(DEFAULT_ADMIN_USER);
+      loginAsAdmin();
     } else {
-      const providerUser: AuthUser = {
-        id_user: 'prov-001',
-        email: 'licitaciones@mhebosap.com.mx',
-        full_name: 'Ing. Fernando Tapia (Estimador)',
-        role: 'PROVIDER_ESTIMATOR',
-        id_provider: 1,
-        provider_name: 'MHEBOSAP, S.A. DE C.V.',
-      };
-      login(providerUser);
+      loginAsProvider();
     }
   };
 
@@ -116,9 +147,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         activeEvent,
+        isLoadingAuth,
         setActiveEvent,
         login,
         logout,
+        loginAsAdmin,
+        loginAsProvider,
         switchRole,
         isInviteModalOpen,
         inviteModalEventId,
