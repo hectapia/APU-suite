@@ -69,29 +69,29 @@ CREATE TABLE IF NOT EXISTS public.app_user (
 );
 
 
--- 5. FUNCIONES AUXILIARES PARA POLÍTICAS RLS
+-- 5. FUNCIONES AUXILIARES PARA POLÍTICAS RLS (SECURITY DEFINER)
 -- ------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_auth_role()
 RETURNS VARCHAR AS $$
 BEGIN
-    -- Retorna el rol configurado en app_user por email autenticado, o ADMIN por defecto en entorno de servicio
     RETURN COALESCE(
         (SELECT role FROM public.app_user WHERE email = auth.jwt() ->> 'email' LIMIT 1),
         'ANONYMOUS'
     );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.get_auth_provider_id()
 RETURNS INT AS $$
 BEGIN
     RETURN (SELECT id_provider FROM public.app_user WHERE email = auth.jwt() ->> 'email' LIMIT 1);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 
--- 6. HABILITAR ROW LEVEL SECURITY (RLS)
+-- 6. HABILITAR ROW LEVEL SECURITY (RLS) EN TODAS LAS TABLAS
 -- ------------------------------------------------------------------------------
+ALTER TABLE public.app_user ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.concept ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.concept_apu_integration ENABLE ROW LEVEL SECURITY;
@@ -106,7 +106,8 @@ ALTER TABLE public.event_provider_assignment ENABLE ROW LEVEL SECURITY;
 -- 7. POLÍTICAS RLS (Row Level Security)
 -- ------------------------------------------------------------------------------
 
--- Regla A: El rol 'service_role' (usado por Next.js Backend API) tiene acceso total sin restricciones
+-- Regla A: El rol 'service_role' (usado por Next.js Backend API y Route Handlers) tiene acceso total
+CREATE POLICY "service_role_all_app_user" ON public.app_user FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "service_role_all_event" ON public.event FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "service_role_all_concept" ON public.concept FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "service_role_all_apu" ON public.concept_apu_integration FOR ALL TO service_role USING (true) WITH CHECK (true);
@@ -117,7 +118,19 @@ CREATE POLICY "service_role_all_audit" ON public.audit_log FOR ALL TO service_ro
 CREATE POLICY "service_role_all_invitation" ON public.event_invitation FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "service_role_all_assignment" ON public.event_provider_assignment FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- Regla B: Concursos (event)
+-- Regla B: Usuarios (app_user)
+-- Admins pueden gestionar todos los usuarios.
+-- Cada usuario autenticado solo puede leer su propio registro de perfil.
+CREATE POLICY "admin_all_app_user" ON public.app_user
+    FOR ALL TO authenticated
+    USING (public.get_auth_role() = 'ADMIN')
+    WITH CHECK (public.get_auth_role() = 'ADMIN');
+
+CREATE POLICY "user_view_own_profile" ON public.app_user
+    FOR SELECT TO authenticated
+    USING (email = auth.jwt() ->> 'email');
+
+-- Regla C: Concursos (event)
 -- Admins pueden leer/escribir todos.
 -- Contratistas solo pueden leer los concursos que tienen explícitamente asignados.
 CREATE POLICY "admin_all_events" ON public.event
@@ -133,7 +146,7 @@ CREATE POLICY "provider_view_assigned_events" ON public.event
         )
     );
 
--- Regla C: Conceptos (concept)
+-- Regla D: Conceptos (concept)
 -- Admins pueden leer/escribir todos.
 -- Contratistas pueden leer los conceptos de sus eventos asignados.
 CREATE POLICY "admin_all_concepts" ON public.concept
@@ -149,7 +162,7 @@ CREATE POLICY "provider_view_assigned_concepts" ON public.concept
         )
     );
 
--- Regla D: Integración APU (concept_apu_integration)
+-- Regla E: Integración APU (concept_apu_integration)
 -- Admins pueden leer todas las propuestas.
 -- Contratistas solo pueden leer y editar sus PROPIOS registros APU (id_provider coincidente).
 CREATE POLICY "admin_all_apu" ON public.concept_apu_integration
@@ -161,8 +174,8 @@ CREATE POLICY "provider_manage_own_apu" ON public.concept_apu_integration
     USING (id_provider = public.get_auth_provider_id())
     WITH CHECK (id_provider = public.get_auth_provider_id());
 
--- Regla E: Catálogos Maestros (Materiales, Mano de Obra, Equipos)
--- Todos los autenticados pueden consultar los catálogos.
+-- Regla F: Catálogos Maestros (Materiales, Mano de Obra, Equipos)
+-- Todos los usuarios autenticados pueden consultar los catálogos.
 -- Solo Administradores pueden insertar o modificar ítems en los catálogos maestros.
 CREATE POLICY "read_catalogs_material" ON public.catalog_material FOR SELECT TO authenticated USING (true);
 CREATE POLICY "read_catalogs_labor" ON public.catalog_labor FOR SELECT TO authenticated USING (true);
@@ -172,7 +185,19 @@ CREATE POLICY "admin_write_catalogs_material" ON public.catalog_material FOR INS
 CREATE POLICY "admin_write_catalogs_labor" ON public.catalog_labor FOR INSERT TO authenticated WITH CHECK (public.get_auth_role() = 'ADMIN');
 CREATE POLICY "admin_write_catalogs_equipment" ON public.catalog_equipment FOR INSERT TO authenticated WITH CHECK (public.get_auth_role() = 'ADMIN');
 
--- Regla F: Bitácora de Auditoría (audit_log)
+-- Regla G: Invitaciones (event_invitation) y Asignaciones (event_provider_assignment)
+-- Solo Administradores pueden crear y ver invitaciones y asignaciones.
+CREATE POLICY "admin_manage_invitations" ON public.event_invitation
+    FOR ALL TO authenticated
+    USING (public.get_auth_role() = 'ADMIN')
+    WITH CHECK (public.get_auth_role() = 'ADMIN');
+
+CREATE POLICY "admin_manage_assignments" ON public.event_provider_assignment
+    FOR ALL TO authenticated
+    USING (public.get_auth_role() = 'ADMIN')
+    WITH CHECK (public.get_auth_role() = 'ADMIN');
+
+-- Regla H: Bitácora de Auditoría (audit_log)
 -- Admins y Auditores pueden leer todos los registros de auditoría.
 -- Inserción permitida con registro de contexto.
 CREATE POLICY "admin_read_audit_log" ON public.audit_log
