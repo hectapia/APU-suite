@@ -38,8 +38,8 @@ interface AuthContextType {
 
 export const DEFAULT_ADMIN_USER: AuthUser = {
   id_user: 'admin-001',
-  email: 'admin.licitaciones@pemex.com',
-  full_name: 'Ing. Administrador de Concursos',
+  email: 'hectapia@outlook.com',
+  full_name: 'Ing. Héctor Tapia (Administrador)',
   role: 'ADMIN',
   id_provider: null,
   provider_name: 'PEMEX Exploración y Producción',

@@ -69,10 +69,19 @@ CREATE TABLE IF NOT EXISTS public.app_user (
     email VARCHAR(255) NOT NULL UNIQUE,
     full_name VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL DEFAULT 'PROVIDER_ESTIMATOR' CHECK (role IN ('ADMIN', 'PROVIDER_ESTIMATOR', 'AUDITOR', 'CLIENT_VIEWER')),
+    password_hash TEXT,
     id_provider INT REFERENCES public.provider(id_provider) ON DELETE SET NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Asegurar columna password_hash si la tabla ya existía
+ALTER TABLE public.app_user ADD COLUMN IF NOT EXISTS password_hash TEXT;
+
+-- Sembrar Administrador Principal por Defecto
+INSERT INTO public.app_user (email, full_name, role, is_active)
+VALUES ('hectapia@outlook.com', 'Ing. Héctor Tapia (Administrador)', 'ADMIN', true)
+ON CONFLICT (email) DO UPDATE SET role = 'ADMIN', full_name = 'Ing. Héctor Tapia (Administrador)';
 
 
 -- 5. FUNCIONES AUXILIARES PARA POLÍTICAS RLS (SECURITY DEFINER)

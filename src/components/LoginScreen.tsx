@@ -21,8 +21,8 @@ export function LoginScreen() {
   const [activeTab, setActiveTab] = useState<'admin' | 'provider'>('admin');
 
   // Admin form state
-  const [adminEmail, setAdminEmail] = useState('admin.licitaciones@pemex.com');
-  const [adminName, setAdminName] = useState('Ing. Administrador de Concursos');
+  const [adminEmail, setAdminEmail] = useState('hectapia@outlook.com');
+  const [adminName, setAdminName] = useState('Ing. Héctor Tapia (Administrador)');
   const [adminPassword, setAdminPassword] = useState('admin123');
 
   // Provider form state
@@ -36,6 +36,12 @@ export function LoginScreen() {
     e.preventDefault();
     if (!adminEmail.trim()) {
       setError('Por favor ingresa un correo de administrador.');
+      return;
+    }
+
+    const savedPassword = localStorage.getItem('apu_admin_password') || 'admin123';
+    if (adminPassword !== savedPassword) {
+      setError('Contraseña incorrecta. Por favor verifica tus credenciales.');
       return;
     }
 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { AuditLogModal } from './AuditLogModal';
+import { ChangePasswordModal } from './ChangePasswordModal';
 import { EventDashboardView } from '@/types/database';
 import { supabase } from '@/lib/supabase';
 import {
@@ -16,11 +17,13 @@ import {
   ExternalLink,
   CheckCircle2,
   Lock,
+  Key,
 } from 'lucide-react';
 
 export function HeaderNav() {
   const { user, activeEvent, switchRole, logout, openInviteModal } = useAuth();
   const [isAuditOpen, setIsAuditOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [events, setEvents] = useState<EventDashboardView[]>([]);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
@@ -201,6 +204,22 @@ export function HeaderNav() {
                   </button>
                 </div>
 
+                {/* Change Password for Admin */}
+                {user.role === 'ADMIN' && (
+                  <div className="py-1 border-b border-slate-100">
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        setIsChangePasswordOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center gap-2 text-slate-700 cursor-pointer font-medium"
+                    >
+                      <Key className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Cambiar Contraseña</span>
+                    </button>
+                  </div>
+                )}
+
                 <div className="pt-1">
                   <button
                     onClick={() => {
@@ -223,6 +242,10 @@ export function HeaderNav() {
       <AuditLogModal
         isOpen={isAuditOpen}
         onClose={() => setIsAuditOpen(false)}
+      />
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
       />
     </>
   );
