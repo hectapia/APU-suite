@@ -225,45 +225,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Master Catalogs Buttons */}
-              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200">
-                <span className="text-[11px] font-bold text-slate-500 uppercase px-2 hidden sm:inline">Catálogos:</span>
-                <button
-                  onClick={() => {
-                    setActiveCatalogType('MATERIAL');
-                    setIsCatalogModalOpen(true);
-                  }}
-                  className="text-xs font-semibold px-2.5 py-1.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                  title="Abrir Catálogo de Materiales"
-                >
-                  <Box className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Materiales ({catalogMaterials.length})</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveCatalogType('LABOR');
-                    setIsCatalogModalOpen(true);
-                  }}
-                  className="text-xs font-semibold px-2.5 py-1.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                  title="Abrir Catálogo de Mano de Obra"
-                >
-                  <Users className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Mano de Obra ({catalogLabor.length})</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveCatalogType('EQUIPMENT');
-                    setIsCatalogModalOpen(true);
-                  }}
-                  className="text-xs font-semibold px-2.5 py-1.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                  title="Abrir Catálogo de Equipos"
-                >
-                  <Wrench className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Equipos ({catalogEquipment.length})</span>
-                </button>
-              </div>
-
+            <div className="flex items-center gap-3">
               <button
                 onClick={loadData}
                 disabled={loading}
@@ -271,7 +233,7 @@ export default function DashboardPage() {
                 title="Recargar datos desde Supabase"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-emerald-600' : ''}`} />
-                <span className="hidden sm:inline">Actualizar</span>
+                <span>Actualizar Datos</span>
               </button>
             </div>
           </div>
