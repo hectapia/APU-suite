@@ -1,4 +1,4 @@
-import { numberToWordsEs } from './number-to-words.ts';
+import { numberToWordsEs } from './number-to-words';
 
 export interface APUInputs {
   materialItems: Array<{ quantity: number; unitPrice: number }>;
