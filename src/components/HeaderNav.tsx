@@ -98,11 +98,10 @@ export function HeaderNav() {
               className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 py-1 px-2.5 rounded-xl text-left transition-colors cursor-pointer"
             >
               <div
-                className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
-                  user.role === 'ADMIN'
+                className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${user.role === 'ADMIN'
                     ? 'bg-purple-600 text-white'
                     : 'bg-emerald-600 text-white'
-                }`}
+                  }`}
               >
                 {user.role === 'ADMIN' ? 'A' : 'C'}
               </div>
@@ -126,11 +125,10 @@ export function HeaderNav() {
                   <p className="font-bold text-slate-900">{user.full_name}</p>
                   <p className="text-[11px] text-slate-500 font-mono">{user.email}</p>
                   <span
-                    className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      user.role === 'ADMIN'
+                    className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${user.role === 'ADMIN'
                         ? 'bg-purple-100 text-purple-800'
                         : 'bg-emerald-100 text-emerald-800'
-                    }`}
+                      }`}
                   >
                     Rol: {user.role}
                   </span>
@@ -172,9 +170,8 @@ export function HeaderNav() {
                       switchRole('ADMIN');
                       setUserDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between ${
-                      user.role === 'ADMIN' ? 'font-bold text-purple-700' : 'text-slate-600'
-                    }`}
+                    className={`w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between ${user.role === 'ADMIN' ? 'font-bold text-purple-700' : 'text-slate-600'
+                      }`}
                   >
                     <span>Administrador (PEMEX)</span>
                     {user.role === 'ADMIN' && <CheckCircle2 className="w-3.5 h-3.5 text-purple-600" />}
@@ -184,11 +181,10 @@ export function HeaderNav() {
                       switchRole('PROVIDER_ESTIMATOR');
                       setUserDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between ${
-                      user.role === 'PROVIDER_ESTIMATOR'
+                    className={`w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between ${user.role === 'PROVIDER_ESTIMATOR'
                         ? 'font-bold text-emerald-700'
                         : 'text-slate-600'
-                    }`}
+                      }`}
                   >
                     <span>Contratista (MHEBOSAP)</span>
                     {user.role === 'PROVIDER_ESTIMATOR' && (
