@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Concept } from '@/types/database';
+import { Concept, EventDashboardView } from '@/types/database';
 import { Search, Calculator, Edit3, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 
 interface ConceptTableProps {
   concepts: Concept[];
+  event?: EventDashboardView | null;
   onOpenApu: (concept: Concept) => void;
   onOpenDirectPrice: (concept: Concept) => void;
   loading?: boolean;
@@ -13,6 +14,7 @@ interface ConceptTableProps {
 
 export const ConceptTable: React.FC<ConceptTableProps> = ({
   concepts,
+  event,
   onOpenApu,
   onOpenDirectPrice,
   loading = false,
@@ -27,8 +29,9 @@ export const ConceptTable: React.FC<ConceptTableProps> = ({
   const filteredConcepts = useMemo(() => {
     return concepts.filter((c) => {
       // Scope filter
-      if (scopeFilter === 'SERVICIO' && c.concept_unit !== 'SERVICIO') return false;
-      if (scopeFilter === 'DIRECT' && c.concept_unit === 'SERVICIO') return false;
+      const isService = (c.concept_unit || '').trim().toUpperCase() === 'SERVICIO';
+      if (scopeFilter === 'SERVICIO' && !isService) return false;
+      if (scopeFilter === 'DIRECT' && isService) return false;
 
       // Status filter
       const hasPrice = c.concept_price != null && c.concept_price > 0;
@@ -54,11 +57,24 @@ export const ConceptTable: React.FC<ConceptTableProps> = ({
   }, [filteredConcepts, currentPage, pageSize]);
 
   const counts = useMemo(() => {
-    const total = concepts.length;
-    const services = concepts.filter((c) => c.concept_unit === 'SERVICIO').length;
-    const direct = total - services;
-    return { total, services, direct };
-  }, [concepts]);
+    const isService = (c: Concept) => (c.concept_unit || '').trim().toUpperCase() === 'SERVICIO';
+
+    // Prioritize event metrics from v_event_dashboard if available, otherwise calculate from concepts
+    const total = event?.total_concepts ?? concepts.length;
+    const services = event?.total_services ?? concepts.filter(isService).length;
+    const direct = event?.total_parts ?? (total - services);
+
+    const integratedServices = event?.integrated_services_count ?? concepts.filter((c) => isService(c) && c.concept_price != null && c.concept_price > 0).length;
+    const pricedParts = event?.priced_parts_count ?? concepts.filter((c) => !isService(c) && c.concept_price != null && c.concept_price > 0).length;
+
+    return {
+      total,
+      services,
+      direct,
+      integratedServices,
+      pricedParts,
+    };
+  }, [concepts, event]);
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
@@ -92,7 +108,7 @@ export const ConceptTable: React.FC<ConceptTableProps> = ({
               }`}
             >
               <Calculator className="w-3.5 h-3.5" />
-              Servicios APU ({counts.services})
+              <span>Servicios APU ({counts.integratedServices} / {counts.services})</span>
             </button>
             <button
               onClick={() => {
@@ -106,7 +122,7 @@ export const ConceptTable: React.FC<ConceptTableProps> = ({
               }`}
             >
               <Edit3 className="w-3.5 h-3.5" />
-              Suministros Directos ({counts.direct})
+              <span>Suministros Directos ({counts.pricedParts} / {counts.direct})</span>
             </button>
           </div>
 

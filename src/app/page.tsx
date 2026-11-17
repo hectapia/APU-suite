@@ -109,14 +109,32 @@ export default function DashboardPage() {
         return fetchedEvents.find((e) => e.id_event === current.id_event) || current;
       });
 
-      // 2. Fetch Concepts (All items)
-      const { data: conceptData, error: conceptErr } = await supabase
-        .from('concept')
-        .select('*')
-        .order('id_concept', { ascending: true });
+      // 2. Fetch Concepts (All items in batches to bypass PostgREST 1000-row limit)
+      let allConcepts: Concept[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      let hasMore = true;
 
-      if (conceptErr) throw conceptErr;
-      setConcepts(conceptData || []);
+      while (hasMore) {
+        const { data: batch, error: batchErr } = await supabase
+          .from('concept')
+          .select('*')
+          .order('id_concept', { ascending: true })
+          .range(from, from + batchSize - 1);
+
+        if (batchErr) throw batchErr;
+        if (batch && batch.length > 0) {
+          allConcepts = allConcepts.concat(batch);
+          from += batchSize;
+          if (batch.length < batchSize) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      setConcepts(allConcepts);
 
       // 3. Fetch Master Catalogs
       const [matRes, labRes, eqRes] = await Promise.all([
@@ -519,6 +537,7 @@ export default function DashboardPage() {
             </div>
 
             <ConceptTable
+              event={selectedEvent}
               concepts={currentEventConcepts}
               loading={loading}
               onOpenApu={(c) => {
