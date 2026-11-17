@@ -109,69 +109,33 @@ export default function DashboardPage() {
 
   // Handler: Save APU Integration
   const handleSaveAPU = async (conceptId: number, apuData: any) => {
-    const { apuOutputs, laborYield, laborYieldUnit, equipmentYield, equipmentYieldUnit } = apuData;
+    const res = await fetch('/api/apu', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conceptId,
+        ...apuData,
+      }),
+    });
 
-    // 1. Upsert intermediate performance groups
-    await supabase.from('concept_performance_group').upsert([
-      {
-        id_concept: conceptId,
-        resource_type: 'LABOR',
-        performance_factor: laborYield,
-        performance_unit: laborYieldUnit,
-      },
-      {
-        id_concept: conceptId,
-        resource_type: 'EQUIPMENT',
-        performance_factor: equipmentYield,
-        performance_unit: equipmentYieldUnit,
-      },
-    ]);
-
-    // 2. Upsert APU integration header
-    const { error: apuErr } = await supabase.from('concept_apu_integration').upsert(
-      {
-        id_concept: conceptId,
-        id_provider: 1, // MHEBOSAP
-        pct_indirects: apuData.pctIndirects,
-        pct_financing: apuData.pctFinancing,
-        pct_utility: apuData.pctUtility,
-        pct_safety_equipment: apuData.pctSafetyEquipment,
-        pct_hand_tools: apuData.pctHandTools,
-        apply_sfp: apuData.applySfp,
-        subtotal_materials: apuOutputs.subtotalMaterials,
-        subtotal_labor: apuOutputs.subtotalLabor,
-        subtotal_equipment: apuOutputs.subtotalEquipment,
-        subtotal_safety_tools: apuOutputs.subtotalSafetyTools,
-        cost_direct_a: apuOutputs.costDirectA,
-        cost_indirect_b: apuOutputs.costIndirectB,
-        cost_sum_c: apuOutputs.costSumC,
-        cost_financing_d: apuOutputs.costFinancingD,
-        cost_sum_e: apuOutputs.costSumE,
-        cost_utility_f: apuOutputs.costUtilityF,
-        cost_sum_g: apuOutputs.costSumG,
-        cost_sfp: apuOutputs.costSfp,
-        concept_price: apuOutputs.conceptPrice,
-        concept_price_txt: apuOutputs.conceptPriceTxt,
-        status: 'COMPLETED',
-      },
-      { onConflict: 'id_concept,id_provider' }
-    );
-
-    if (apuErr) throw apuErr;
-
-    // 3. Update concept table with computed price and text
-    const { error: conceptErr } = await supabase
-      .from('concept')
-      .update({
-        concept_price: apuOutputs.conceptPrice,
-        concept_price_txt: apuOutputs.conceptPriceTxt,
-      })
-      .eq('id_concept', conceptId);
-
-    if (conceptErr) throw conceptErr;
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      throw new Error(json.error || 'Error al guardar la integración APU.');
+    }
 
     // Refresh UI
     await loadData();
+  };
+
+  // Handler: Real-time sync when a new catalog item is created
+  const handleCatalogItemCreated = (type: string, item: any) => {
+    if (type === 'MATERIAL') {
+      setCatalogMaterials((prev) => [...prev, item]);
+    } else if (type === 'LABOR') {
+      setCatalogLabor((prev) => [...prev, item]);
+    } else if (type === 'EQUIPMENT') {
+      setCatalogEquipment((prev) => [...prev, item]);
+    }
   };
 
   // Handler: Save Direct Price for non-service concept
@@ -434,6 +398,7 @@ export default function DashboardPage() {
         catalogMaterials={catalogMaterials}
         catalogLabor={catalogLabor}
         catalogEquipment={catalogEquipment}
+        onCatalogItemCreated={handleCatalogItemCreated}
       />
 
       {/* MODAL 2: DIRECT PRICE ASSIGNMENT */}

@@ -632,15 +632,18 @@ CREATE POLICY "Admins can manage all users" ON app_user
         SELECT 1 FROM app_user WHERE id_user = auth.uid() AND role = 'ADMIN'
     ));
 
--- Master Catalogs Policies (Read for all authenticated & invited contractors, write for admins)
+-- Master Catalogs Policies (Allow read and item creation for estimators/contractors)
 DROP POLICY IF EXISTS "Read Catalog Materials" ON catalog_material;
-CREATE POLICY "Read Catalog Materials" ON catalog_material FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Manage Catalog Materials" ON catalog_material;
+CREATE POLICY "Manage Catalog Materials" ON catalog_material FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Read Catalog Labor" ON catalog_labor;
-CREATE POLICY "Read Catalog Labor" ON catalog_labor FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Manage Catalog Labor" ON catalog_labor;
+CREATE POLICY "Manage Catalog Labor" ON catalog_labor FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Read Catalog Equipment" ON catalog_equipment;
-CREATE POLICY "Read Catalog Equipment" ON catalog_equipment FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Manage Catalog Equipment" ON catalog_equipment;
+CREATE POLICY "Manage Catalog Equipment" ON catalog_equipment FOR ALL USING (true) WITH CHECK (true);
 
 -- Event, Client and Concepts Policies (Read for all authenticated / assigned contractors)
 DROP POLICY IF EXISTS "Read Clients" ON client;
@@ -655,12 +658,16 @@ CREATE POLICY "Read Events" ON event FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Read Concepts" ON concept;
 CREATE POLICY "Read Concepts" ON concept FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Contractor Add Concept" ON concept;
+CREATE POLICY "Contractor Add Concept" ON concept FOR INSERT WITH CHECK (true);
+
 DROP POLICY IF EXISTS "Contractor Direct Concept Price Update" ON concept;
 CREATE POLICY "Contractor Direct Concept Price Update" ON concept 
     FOR UPDATE USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Read Performance Groups" ON concept_performance_group;
-CREATE POLICY "Read Performance Groups" ON concept_performance_group FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Manage Performance Groups" ON concept_performance_group;
+CREATE POLICY "Manage Performance Groups" ON concept_performance_group FOR ALL USING (true) WITH CHECK (true);
 
 -- Magic Link Invitations Policies (Public verification by token, management by admin)
 DROP POLICY IF EXISTS "Verify Invitations by Token" ON event_invitation;
