@@ -34,7 +34,7 @@ const FALLBACK_PROVIDERS: Provider[] = [
     tag_provider: 'PROV-001',
     provider_name: 'MHEBOSAP, S.A. DE C.V.',
     provider_representative: 'Ing. Fernando Tapia',
-    contact_email: 'licitaciones@mhebosap.com.mx',
+    contact_email: '',
     created_at: new Date().toISOString(),
   },
   {
@@ -133,7 +133,7 @@ export function InviteProviderModal({
   const [selectedProviderId, setSelectedProviderId] = useState<string>('1');
   const [providerName, setProviderName] = useState('MHEBOSAP, S.A. DE C.V.');
   const [fullName, setFullName] = useState('Ing. Fernando Tapia');
-  const [email, setEmail] = useState('licitaciones@mhebosap.com.mx');
+  const [email, setEmail] = useState('');
   const [accessRole, setAccessRole] = useState<'WRITE' | 'READ'>('WRITE');
   const [regenerateToken, setRegenerateToken] = useState(false);
 
@@ -259,7 +259,7 @@ export function InviteProviderModal({
       const handleResetForm = () => {
         setEditingInvitationId(null);
         setGeneratedLink(null);
-        setEmail('licitaciones@mhebosap.com.mx');
+        setEmail('');
         setFullName('Ing. Fernando Tapia');
         setProviderName('MHEBOSAP, S.A. DE C.V.');
         setSelectedProviderId('1');
@@ -643,9 +643,14 @@ export function InviteProviderModal({
 
                               {/* Email */}
                               <div>
-                                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                  <Mail className="w-3.5 h-3.5 text-slate-400" />
-                                  Correo para Enlace Mágico
+                                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
+                                  <span className="flex items-center gap-1.5">
+                                    <Mail className="w-3.5 h-3.5 text-emerald-600" />
+                                    Correo del Contratista (Envío de Enlace)
+                                  </span>
+                                  <span className="text-[10px] text-emerald-700 font-semibold">
+                                    Requerido
+                                  </span>
                                 </label>
                                 <input
                                   type="email"
@@ -653,11 +658,14 @@ export function InviteProviderModal({
                                   id="contractor_email"
                                   value={email}
                                   onChange={(e) => setEmail(e.target.value)}
-                                  placeholder="licitaciones@mhebosap.com.mx"
+                                  placeholder="correo.estimador@empresa.com"
                                   className="w-full text-xs border border-slate-300 rounded-lg p-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
                                   required
                                   autoComplete="off"
                                 />
+                                <p className="text-[10px] text-slate-500 mt-1">
+                                  Ingresa el correo real del contratista para emitir su enlace firmado de acceso.
+                                </p>
                               </div>
                             </div>
 

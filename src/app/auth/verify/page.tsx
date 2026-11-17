@@ -195,7 +195,7 @@ function VerifyTokenContent() {
                   type="email"
                   value={renewEmail}
                   onChange={(e) => setRenewEmail(e.target.value)}
-                  placeholder="licitaciones@mhebosap.com.mx"
+                  placeholder="contratista@empresa.com"
                   className="w-full text-xs border border-slate-300 rounded-lg p-2.5 font-mono bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <button

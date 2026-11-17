@@ -97,38 +97,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Fallback for standard demo contractor email (e.g. licitaciones@mhebosap.com.mx)
-    if (!activeInvitation && normalizedEmail.includes('mhebosap')) {
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-
-      activeInvitation = {
-        id_invitation: `inv-demo-${Date.now()}`,
-        id_event: 1,
-        id_provider: 1,
-        invited_email: normalizedEmail,
-        token,
-        expires_at: expiresAt,
-        is_accepted: false,
-        created_at: new Date().toISOString(),
-        event: {
-          id_event: 1,
-          tag_event: 'PEP-DG-SAP-001-2026',
-          event_type: 'Servicios de Mantenimiento y Reacondicionamiento Integral',
-        },
-        provider: {
-          id_provider: 1,
-          tag_provider: 'PROV-001',
-          provider_name: 'MHEBOSAP, S.A. DE C.V.',
-          provider_representative: 'Ing. Fernando Tapia',
-          contact_email: normalizedEmail,
-        },
-      };
-
-      recordInvitationInStore(activeInvitation);
-    }
-
-    // 4. If still no invitation found, deny
+    // 3. If no invitation found, deny
     if (!activeInvitation) {
       await logAudit({
         userRole: 'ANONYMOUS',

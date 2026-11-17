@@ -23,32 +23,6 @@ declare global {
 function getCache(): Map<string, StoredInvitation> {
   if (!global.__APU_INVITATIONS_CACHE__) {
     global.__APU_INVITATIONS_CACHE__ = new Map<string, StoredInvitation>();
-
-    // Seed default contractor invitation for licitaciones@mhebosap.com.mx
-    const seedToken = 'mhebosap-demo-token-2026';
-    const seedInv: StoredInvitation = {
-      id_invitation: 'inv-seed-001',
-      id_event: 1,
-      id_provider: 1,
-      invited_email: 'licitaciones@mhebosap.com.mx',
-      token: seedToken,
-      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-      is_accepted: false,
-      created_at: new Date().toISOString(),
-      event: {
-        id_event: 1,
-        tag_event: 'PEP-DG-SAP-001-2026',
-        event_type: 'Servicios de Mantenimiento y Reacondicionamiento Integral',
-        client: { client_name: 'PEMEX Exploración y Producción' },
-      },
-      provider: {
-        id_provider: 1,
-        tag_provider: 'PROV-001',
-        provider_name: 'MHEBOSAP, S.A. DE C.V.',
-        provider_representative: 'Ing. Fernando Tapia',
-      },
-    };
-    global.__APU_INVITATIONS_CACHE__.set(seedToken, seedInv);
   }
   return global.__APU_INVITATIONS_CACHE__;
 }
@@ -144,20 +118,6 @@ export async function getInvitationByToken(token: string): Promise<StoredInvitat
   for (const inv of cache.values()) {
     if (inv.token === normalizedToken || normalizedToken.includes(inv.token)) {
       return inv;
-    }
-  }
-
-  // If token starts with or contains 'mhebosap' or 'demo', map to MHEBOSAP invitation
-  if (
-    normalizedToken.toLowerCase().includes('mhebosap') ||
-    normalizedToken === 'demo_provider_token' ||
-    normalizedToken === 'admin_direct'
-  ) {
-    const seed = cache.get('mhebosap-demo-token-2026');
-    if (seed) {
-      const cloned = { ...seed, token: normalizedToken };
-      cache.set(normalizedToken, cloned);
-      return cloned;
     }
   }
 

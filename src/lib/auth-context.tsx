@@ -47,11 +47,11 @@ export const DEFAULT_ADMIN_USER: AuthUser = {
 
 export const DEFAULT_PROVIDER_USER: AuthUser = {
   id_user: 'prov-001',
-  email: 'licitaciones@mhebosap.com.mx',
-  full_name: 'Ing. Fernando Tapia (Estimador)',
+  email: '',
+  full_name: 'Estimador de Contratista',
   role: 'PROVIDER_ESTIMATOR',
   id_provider: 1,
-  provider_name: 'MHEBOSAP, S.A. DE C.V.',
+  provider_name: 'Contratista Asignado',
 };
 
 const AuthContext = createContext<AuthContextType>({

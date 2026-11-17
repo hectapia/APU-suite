@@ -328,6 +328,22 @@ export async function PUT(req: NextRequest) {
 
     if (updateErr) throw updateErr;
 
+    if (updatedInvitation && updatedInvitation.token) {
+      recordInvitationInStore({
+        id_invitation: updatedInvitation.id_invitation,
+        id_event: updatedInvitation.id_event,
+        id_provider: updatedInvitation.id_provider,
+        invited_email: updatedInvitation.invited_email,
+        token: updatedInvitation.token,
+        expires_at: updatedInvitation.expires_at,
+        is_accepted: updatedInvitation.is_accepted,
+        accepted_at: updatedInvitation.accepted_at,
+        created_at: updatedInvitation.created_at,
+        event: updatedInvitation.event,
+        provider: updatedInvitation.provider,
+      });
+    }
+
     const origin = req.nextUrl.origin || 'http://localhost:3000';
     const magicLink = updatedInvitation?.token
       ? `${origin}/auth/verify?token=${updatedInvitation.token}`

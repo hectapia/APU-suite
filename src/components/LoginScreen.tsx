@@ -326,7 +326,7 @@ export function LoginScreen() {
                       type="email"
                       value={providerEmail}
                       onChange={(e) => setProviderEmail(e.target.value)}
-                      placeholder="licitaciones@mhebosap.com.mx"
+                      placeholder="contratista@empresa.com"
                       className="w-full text-xs font-mono border border-slate-300 rounded-xl p-3 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
                       required
                     />
