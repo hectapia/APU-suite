@@ -27,6 +27,10 @@ interface AuthContextType {
   login: (userData: AuthUser) => void;
   logout: () => void;
   switchRole: (role: UserRole) => void;
+  isInviteModalOpen: boolean;
+  inviteModalEventId?: number;
+  openInviteModal: (eventId?: number) => void;
+  closeInviteModal: () => void;
 }
 
 const DEFAULT_ADMIN_USER: AuthUser = {
@@ -45,11 +49,27 @@ const AuthContext = createContext<AuthContextType>({
   login: () => {},
   logout: () => {},
   switchRole: () => {},
+  isInviteModalOpen: false,
+  inviteModalEventId: undefined,
+  openInviteModal: () => {},
+  closeInviteModal: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [activeEvent, setActiveEvent] = useState<ActiveEventHeaderInfo | null>(null);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteModalEventId, setInviteModalEventId] = useState<number | undefined>(undefined);
+
+  const openInviteModal = (eventId?: number) => {
+    setInviteModalEventId(eventId);
+    setIsInviteModalOpen(true);
+  };
+
+  const closeInviteModal = () => {
+    setIsInviteModalOpen(false);
+    setInviteModalEventId(undefined);
+  };
 
   useEffect(() => {
     // Load persisted session from localStorage if present, else default to Admin
@@ -100,6 +120,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         switchRole,
+        isInviteModalOpen,
+        inviteModalEventId,
+        openInviteModal,
+        closeInviteModal,
       }}
     >
       {children}

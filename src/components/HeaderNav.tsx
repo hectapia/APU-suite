@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { InviteProviderModal } from './InviteProviderModal';
 import { AuditLogModal } from './AuditLogModal';
 import { EventDashboardView } from '@/types/database';
 import { supabase } from '@/lib/supabase';
@@ -20,8 +19,7 @@ import {
 } from 'lucide-react';
 
 export function HeaderNav() {
-  const { user, activeEvent, switchRole, logout } = useAuth();
-  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const { user, activeEvent, switchRole, logout, openInviteModal } = useAuth();
   const [isAuditOpen, setIsAuditOpen] = useState(false);
   const [events, setEvents] = useState<EventDashboardView[]>([]);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -74,7 +72,7 @@ export function HeaderNav() {
         {user?.role === 'ADMIN' && (
           <div className="hidden lg:flex items-center space-x-1.5">
             <button
-              onClick={() => setIsInviteOpen(true)}
+              onClick={() => openInviteModal(activeEvent?.id_event)}
               className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-1.5 px-2.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
               title="Invitar Contratista con Enlace Mágico"
             >
@@ -144,7 +142,7 @@ export function HeaderNav() {
                     <button
                       onClick={() => {
                         setUserDropdownOpen(false);
-                        setIsInviteOpen(true);
+                        openInviteModal(activeEvent?.id_event);
                       }}
                       className="w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center gap-2 text-slate-700"
                     >
@@ -218,12 +216,6 @@ export function HeaderNav() {
       </div>
 
       {/* Admin Modals */}
-      <InviteProviderModal
-        isOpen={isInviteOpen}
-        onClose={() => setIsInviteOpen(false)}
-        events={events}
-        defaultEventId={activeEvent?.id_event}
-      />
       <AuditLogModal
         isOpen={isAuditOpen}
         onClose={() => setIsAuditOpen(false)}

@@ -34,7 +34,15 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, activeEvent, setActiveEvent } = useAuth();
+  const {
+    user,
+    activeEvent,
+    setActiveEvent,
+    isInviteModalOpen,
+    inviteModalEventId,
+    openInviteModal,
+    closeInviteModal,
+  } = useAuth();
   const [events, setEvents] = useState<EventDashboardView[]>([]);
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [catalogMaterials, setCatalogMaterials] = useState<CatalogMaterial[]>([]);
@@ -59,8 +67,6 @@ export default function DashboardPage() {
   const [isDirectPriceOpen, setIsDirectPriceOpen] = useState(false);
 
   const [isAddConceptOpen, setIsAddConceptOpen] = useState(false);
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [inviteEventId, setInviteEventId] = useState<number | undefined>(undefined);
 
   // Fetch all core data from Supabase
   const loadData = useCallback(async () => {
@@ -285,10 +291,7 @@ export default function DashboardPage() {
                     handleSelectEvent(ev);
                     setIsAddConceptOpen(true);
                   }}
-                  onInviteProvider={() => {
-                    setInviteEventId(ev.id_event);
-                    setIsInviteModalOpen(true);
-                  }}
+                  onInviteProvider={() => openInviteModal(ev.id_event)}
                 />
               ))
             )}
@@ -398,10 +401,7 @@ export default function DashboardPage() {
                     </span>
                     {user?.role === 'ADMIN' && (
                       <button
-                        onClick={() => {
-                          setInviteEventId(selectedEvent.id_event);
-                          setIsInviteModalOpen(true);
-                        }}
+                        onClick={() => openInviteModal(selectedEvent.id_event)}
                         className="ml-2 text-[10px] font-bold text-emerald-700 hover:text-emerald-950 underline cursor-pointer"
                         title="Vincular o editar contratista asignado a este concurso"
                       >
@@ -537,9 +537,9 @@ export default function DashboardPage() {
       {/* MODAL 5: INVITE / LINK PROVIDER MODAL */}
       <InviteProviderModal
         isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
+        onClose={closeInviteModal}
         events={events}
-        defaultEventId={inviteEventId}
+        defaultEventId={inviteModalEventId}
         onEventUpdated={loadData}
       />
     </div>

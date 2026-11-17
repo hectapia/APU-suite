@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '@/lib/auth-context';
 import { EventDashboardView, Provider, EventInvitation } from '@/types/database';
 import { supabase } from '@/lib/supabase';
@@ -24,7 +25,43 @@ import {
   CheckCircle2,
   Clock,
   Search,
+  UserCheck,
 } from 'lucide-react';
+
+const FALLBACK_PROVIDERS: Provider[] = [
+  {
+    id_provider: 1,
+    tag_provider: 'PROV-001',
+    provider_name: 'MHEBOSAP, S.A. DE C.V.',
+    provider_representative: 'Ing. Fernando Tapia',
+    contact_email: 'licitaciones@mhebosap.com.mx',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id_provider: 2,
+    tag_provider: 'PROV-002',
+    provider_name: 'CONSTRUCTORA Y EDIFICADORA MEXICANA, S.A. DE C.V.',
+    provider_representative: 'Ing. Roberto Sánchez',
+    contact_email: 'contacto@cymexicana.mx',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id_provider: 3,
+    tag_provider: 'PROV-003',
+    provider_name: 'SERVICIOS Y CONSTRUCCIONES INDUSTRIALES DEL GOLFO, S.A.',
+    provider_representative: 'Lic. Alejandro Mora',
+    contact_email: 'contacto@scigolfo.com.mx',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id_provider: 4,
+    tag_provider: 'PROV-004',
+    provider_name: 'PROYECTOS PETROLEROS DEL SURESTE, S.A. DE C.V.',
+    provider_representative: 'Ing. Carlos Mendoza',
+    contact_email: 'contratos@surestepetrolero.com',
+    created_at: new Date().toISOString(),
+  },
+];
 
 interface InviteProviderModalProps {
   isOpen: boolean;
@@ -42,24 +79,39 @@ export function InviteProviderModal({
   onEventUpdated,
 }: InviteProviderModalProps) {
   const { user } = useAuth();
+  const [mounted, setMounted] = useState(false);
 
-  // Internal events state to ensure we always have events even if prop is empty
+  // SSR mount guard for createPortal
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Events & Providers list
   const [events, setEvents] = useState<EventDashboardView[]>(propEvents || []);
-  const [providers, setProviders] = useState<Provider[]>([]);
+  const [dbProviders, setDbProviders] = useState<Provider[]>([]);
   const [invitations, setInvitations] = useState<EventInvitation[]>([]);
 
-  // Navigation mode: 'form' | 'list'
+  // Merge dbProviders with fallbacks to guarantee rich contractor selection
+  const allProviders = useMemo(() => {
+    const map = new Map<string, Provider>();
+    FALLBACK_PROVIDERS.forEach((p) => map.set(p.provider_name.trim().toLowerCase(), p));
+    dbProviders.forEach((p) => map.set(p.provider_name.trim().toLowerCase(), p));
+    return Array.from(map.values());
+  }, [dbProviders]);
+
+  // Tab: 'form' | 'list'
   const [activeTab, setActiveTab] = useState<'form' | 'list'>('form');
 
   // Form State
   const [editingInvitationId, setEditingInvitationId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<number>(
-    defaultEventId || propEvents[0]?.id_event || 1
+    defaultEventId || (propEvents && propEvents[0]?.id_event) || 1
   );
-  const [selectedProviderId, setSelectedProviderId] = useState<string>('custom');
+  const [contractorMode, setContractorMode] = useState<'select' | 'custom'>('select');
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('1');
   const [providerName, setProviderName] = useState('MHEBOSAP, S.A. DE C.V.');
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('Ing. Fernando Tapia');
+  const [email, setEmail] = useState('licitaciones@mhebosap.com.mx');
   const [accessRole, setAccessRole] = useState<'WRITE' | 'READ'>('WRITE');
   const [regenerateToken, setRegenerateToken] = useState(false);
 
@@ -72,32 +124,34 @@ export function InviteProviderModal({
   const [copied, setCopied] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch events and invitations from server
+  // Fetch fresh data from backend
   const loadData = useCallback(async () => {
     try {
       setFetchingData(true);
       setError(null);
 
-      // Load events if not provided or to ensure fresh data
-      const { data: evData } = await supabase.from('v_event_dashboard').select('*');
-      if (evData && evData.length > 0) {
-        setEvents(evData);
-      }
+      const [evRes, invRes] = await Promise.all([
+        supabase.from('v_event_dashboard').select('*'),
+        fetch('/api/auth/invite').then((r) => r.json()),
+      ]);
 
-      // Load invitations and providers via API
-      const res = await fetch('/api/auth/invite');
-      const data = await res.json();
-      if (data.success) {
-        setInvitations(data.invitations || []);
-        setProviders(data.providers || []);
+      if (evRes.data && evRes.data.length > 0) {
+        setEvents(evRes.data);
+      }
+      if (invRes.success) {
+        setInvitations(invRes.invitations || []);
+        if (invRes.providers && invRes.providers.length > 0) {
+          setDbProviders(invRes.providers);
+        }
       }
     } catch (err: any) {
-      console.warn('Error fetching invite data:', err);
+      console.warn('Notice loading modal data:', err);
     } finally {
       setFetchingData(false);
     }
   }, []);
 
+  // Open modal effects
   useEffect(() => {
     if (isOpen) {
       loadData();
@@ -107,33 +161,54 @@ export function InviteProviderModal({
     }
   }, [isOpen, defaultEventId, loadData]);
 
-  // When defaultEventId changes or events change, update selectedEventId
+  // Keep events synced with propEvents
   useEffect(() => {
-    if (defaultEventId) {
-      setSelectedEventId(defaultEventId);
-    } else if (events.length > 0 && !selectedEventId) {
-      setSelectedEventId(events[0].id_event);
+    if (propEvents && propEvents.length > 0) {
+      setEvents(propEvents);
     }
-  }, [defaultEventId, events, selectedEventId]);
+  }, [propEvents]);
 
-  // When an existing provider is selected from dropdown
-  const handleProviderSelectChange = (value: string) => {
-    setSelectedProviderId(value);
-    if (value === 'custom') {
-      setProviderName('');
-      setFullName('');
-      setEmail('');
-    } else {
-      const found = providers.find((p) => String(p.id_provider) === value);
-      if (found) {
-        setProviderName(found.provider_name);
-        setFullName(found.provider_representative || '');
-        setEmail(found.contact_email || '');
+  // Handle event selection change: automatically pre-fill with that event's current contractor if any
+  const handleEventChange = (eventId: number) => {
+    setSelectedEventId(eventId);
+    const targetEv = events.find((e) => e.id_event === eventId);
+    if (targetEv?.provider_name) {
+      // Find matching provider
+      const matched = allProviders.find(
+        (p) => p.provider_name.toLowerCase() === targetEv.provider_name?.toLowerCase()
+      );
+      if (matched) {
+        setSelectedProviderId(String(matched.id_provider));
+        setProviderName(matched.provider_name);
+        setFullName(matched.provider_representative || '');
+        setEmail(matched.contact_email || '');
+        setContractorMode('select');
+      } else {
+        setProviderName(targetEv.provider_name);
+        setSelectedProviderId('custom');
+        setContractorMode('custom');
       }
     }
   };
 
-  // Start editing an existing invitation
+  // Handle contractor selection from dropdown
+  const handleContractorSelect = (providerIdStr: string) => {
+    setSelectedProviderId(providerIdStr);
+    if (providerIdStr === 'custom') {
+      setContractorMode('custom');
+      return;
+    }
+
+    setContractorMode('select');
+    const prov = allProviders.find((p) => String(p.id_provider) === providerIdStr);
+    if (prov) {
+      setProviderName(prov.provider_name);
+      setFullName(prov.provider_representative || '');
+      setEmail(prov.contact_email || '');
+    }
+  };
+
+  // Edit existing invitation
   const handleEditInvitation = (inv: EventInvitation) => {
     setEditingInvitationId(inv.id_invitation);
     setSelectedEventId(inv.id_event);
@@ -142,33 +217,37 @@ export function InviteProviderModal({
     setRegenerateToken(false);
     setGeneratedLink(null);
     setError(null);
+    setSuccessMessage(null);
 
     if (inv.id_provider && inv.provider) {
       setSelectedProviderId(String(inv.id_provider));
       setProviderName(inv.provider.provider_name);
       setFullName(inv.provider.provider_representative || '');
+      setContractorMode('select');
     } else if (inv.provider) {
       setProviderName(inv.provider.provider_name);
       setFullName(inv.provider.provider_representative || '');
+      setSelectedProviderId('custom');
+      setContractorMode('custom');
     }
 
     setActiveTab('form');
   };
 
-  // Cancel edit mode and reset form
   const handleResetForm = () => {
     setEditingInvitationId(null);
     setGeneratedLink(null);
-    setEmail('');
-    setFullName('');
+    setEmail('licitaciones@mhebosap.com.mx');
+    setFullName('Ing. Fernando Tapia');
     setProviderName('MHEBOSAP, S.A. DE C.V.');
-    setSelectedProviderId('custom');
+    setSelectedProviderId('1');
+    setContractorMode('select');
     setRegenerateToken(false);
     setError(null);
     setSuccessMessage(null);
   };
 
-  // Submit Handler: Create or Update
+  // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
@@ -177,6 +256,10 @@ export function InviteProviderModal({
     }
     if (!selectedEventId) {
       setError('Por favor selecciona un concurso existente.');
+      return;
+    }
+    if (!providerName.trim()) {
+      setError('Por favor ingresa o selecciona la razón social del contratista.');
       return;
     }
 
@@ -223,7 +306,6 @@ export function InviteProviderModal({
           : 'Invitación generada y contratista vinculado al concurso exitosamente.'
       );
 
-      // Reload fresh list of invitations
       await loadData();
       if (onEventUpdated) {
         onEventUpdated();
@@ -270,11 +352,10 @@ export function InviteProviderModal({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const currentSelectedEvent = events.find((ev) => ev.id_event === selectedEventId);
 
-  // Filter invitations for search
   const filteredInvitations = invitations.filter((inv) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -286,12 +367,21 @@ export function InviteProviderModal({
     );
   });
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5"
-      style={{ zIndex: 100 }}
+      className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5"
+      style={{ zIndex: 99999 }}
+      onClick={(e) => {
+        // Prevent background clicks from closing unexpectedly if user is selecting text
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div
+        className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
@@ -317,8 +407,9 @@ export function InviteProviderModal({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -328,6 +419,7 @@ export function InviteProviderModal({
         <div className="flex items-center justify-between px-6 pt-3 pb-2 bg-slate-50 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => setActiveTab('form')}
               className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'form'
@@ -339,6 +431,7 @@ export function InviteProviderModal({
               <span>{editingInvitationId ? 'Editar Asignación' : 'Nueva Invitación / Asignación'}</span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('list')}
               className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'list'
@@ -352,9 +445,10 @@ export function InviteProviderModal({
           </div>
 
           <button
+            type="button"
             onClick={loadData}
             disabled={fetchingData}
-            className="text-slate-500 hover:text-slate-800 p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 shadow-2xs transition-colors"
+            className="text-slate-500 hover:text-slate-800 p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 shadow-2xs transition-colors cursor-pointer"
             title="Recargar datos"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${fetchingData ? 'animate-spin text-emerald-600' : ''}`} />
@@ -377,7 +471,7 @@ export function InviteProviderModal({
             </div>
           )}
 
-          {/* TAB 1: FORM VIEW (CREATE OR EDIT) */}
+          {/* TAB 1: FORM VIEW */}
           {activeTab === 'form' && (
             <>
               {!generatedLink ? (
@@ -392,9 +486,10 @@ export function InviteProviderModal({
                     </label>
 
                     <select
+                      id="input_select_event"
                       value={selectedEventId}
-                      onChange={(e) => setSelectedEventId(Number(e.target.value))}
-                      className="w-full text-xs font-semibold border border-slate-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
+                      onChange={(e) => handleEventChange(Number(e.target.value))}
+                      className="w-full text-xs font-semibold border border-slate-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 cursor-pointer"
                       required
                     >
                       {events.map((ev) => (
@@ -424,43 +519,88 @@ export function InviteProviderModal({
 
                   {/* Contractor Selection & Details */}
                   <div className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-3 shadow-2xs">
-                    <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
-                      2. Contratista Asignado (Razón Social y Representante)
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                        2. Contratista Asignado (Razón Social y Representante)
+                      </label>
+                      <div className="flex items-center gap-1 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setContractorMode('select')}
+                          className={`px-2 py-0.5 rounded font-semibold transition-colors cursor-pointer text-[11px] ${
+                            contractorMode === 'select'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          Catálogo
+                        </button>
+                        <span className="text-slate-300">|</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setContractorMode('custom');
+                            setSelectedProviderId('custom');
+                          }}
+                          className={`px-2 py-0.5 rounded font-semibold transition-colors cursor-pointer text-[11px] ${
+                            contractorMode === 'custom'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          Escribir Nuevo
+                        </button>
+                      </div>
+                    </div>
 
-                    {/* Quick Pick from Existing Providers */}
+                    {/* Quick Pick from Existing Providers Dropdown */}
                     <div>
-                      <span className="block text-[11px] font-semibold text-slate-500 mb-1">
-                        Elegir de Catálogo de Contratistas Registrados o Crear Nuevo:
+                      <span className="block text-[11px] font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                        <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        Seleccionar de Directorio de Contratistas:
                       </span>
                       <select
+                        id="input_select_provider"
                         value={selectedProviderId}
-                        onChange={(e) => handleProviderSelectChange(e.target.value)}
-                        className="w-full text-xs border border-slate-300 rounded-lg p-2 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        onChange={(e) => handleContractorSelect(e.target.value)}
+                        className="w-full text-xs font-medium border border-slate-300 rounded-lg p-2 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                       >
-                        <option value="custom">+ Registrar / Editar Contratista Manualmente</option>
-                        {providers.map((p) => (
+                        <option value="custom">&rarr; Escribir / Registrar Nuevo Contratista</option>
+                        {allProviders.map((p) => (
                           <option key={p.id_provider} value={p.id_provider}>
                             {p.tag_provider ? `[${p.tag_provider}] ` : ''}
-                            {p.provider_name} {p.provider_representative ? `(${p.provider_representative})` : ''}
+                            {p.provider_name} {p.provider_representative ? `— Rep: ${p.provider_representative}` : ''}
                           </option>
                         ))}
                       </select>
                     </div>
 
-                    {/* Contractor Name */}
+                    {/* Contractor Name Input */}
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                        <Building className="w-3.5 h-3.5 text-slate-400" />
-                        Razón Social de la Empresa Contratista
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Building className="w-3.5 h-3.5 text-slate-400" />
+                          Razón Social de la Empresa Contratista
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-normal">Editable</span>
                       </label>
                       <input
                         type="text"
+                        name="contractor_provider_name"
+                        id="contractor_provider_name"
                         value={providerName}
-                        onChange={(e) => setProviderName(e.target.value)}
+                        onChange={(e) => {
+                          setProviderName(e.target.value);
+                          if (selectedProviderId !== 'custom') {
+                            // If user is editing the text, decouple from provider dropdown
+                            setSelectedProviderId('custom');
+                            setContractorMode('custom');
+                          }
+                        }}
                         placeholder="Ej. MHEBOSAP, S.A. DE C.V."
-                        className="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                        className="w-full text-xs border border-slate-300 rounded-lg p-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                         required
+                        autoComplete="off"
                       />
                     </div>
 
@@ -473,10 +613,13 @@ export function InviteProviderModal({
                         </label>
                         <input
                           type="text"
+                          name="contractor_full_name"
+                          id="contractor_full_name"
                           value={fullName}
                           onChange={(e) => setFullName(e.target.value)}
                           placeholder="Ej. Ing. Fernando Tapia"
-                          className="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="w-full text-xs border border-slate-300 rounded-lg p-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          autoComplete="off"
                         />
                       </div>
 
@@ -488,11 +631,14 @@ export function InviteProviderModal({
                         </label>
                         <input
                           type="email"
+                          name="contractor_email"
+                          id="contractor_email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="licitaciones@mhebosap.com.mx"
-                          className="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                          className="w-full text-xs border border-slate-300 rounded-lg p-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
                           required
+                          autoComplete="off"
                         />
                       </div>
                     </div>
@@ -504,7 +650,7 @@ export function InviteProviderModal({
                         <select
                           value={accessRole}
                           onChange={(e) => setAccessRole(e.target.value as any)}
-                          className="text-xs border border-slate-300 rounded-md p-1.5 bg-slate-50 font-medium"
+                          className="text-xs border border-slate-300 rounded-md p-1.5 bg-slate-50 font-medium cursor-pointer"
                         >
                           <option value="WRITE">Captura y Edición de APU (WRITE)</option>
                           <option value="READ">Solo Consulta de Concurso (READ)</option>
@@ -517,7 +663,7 @@ export function InviteProviderModal({
                             type="checkbox"
                             checked={regenerateToken}
                             onChange={(e) => setRegenerateToken(e.target.checked)}
-                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                           />
                           <span className="text-[11px] font-semibold text-blue-700">
                             Regenerar nuevo token de acceso
@@ -545,7 +691,7 @@ export function InviteProviderModal({
                       <button
                         type="button"
                         onClick={handleResetForm}
-                        className="text-xs font-semibold text-slate-600 hover:text-slate-900 underline"
+                        className="text-xs font-semibold text-slate-600 hover:text-slate-900 underline cursor-pointer"
                       >
                         Cancelar edición y crear nueva
                       </button>
@@ -614,6 +760,7 @@ export function InviteProviderModal({
                         className="w-full text-xs font-mono bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-700 select-all"
                       />
                       <button
+                        type="button"
                         onClick={handleCopy}
                         className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3 py-2.5 rounded-lg flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
                         title="Copiar al portapapeles"
@@ -635,8 +782,9 @@ export function InviteProviderModal({
 
                   <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                     <button
+                      type="button"
                       onClick={handleResetForm}
-                      className="text-xs font-semibold text-slate-600 hover:text-slate-900"
+                      className="text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
                     >
                       &larr; Crear o Editar Otra Invitación
                     </button>
@@ -651,6 +799,7 @@ export function InviteProviderModal({
                         <span>Probar Enlace</span>
                       </a>
                       <button
+                        type="button"
                         onClick={() => {
                           handleResetForm();
                           setActiveTab('list');
@@ -666,7 +815,7 @@ export function InviteProviderModal({
             </>
           )}
 
-          {/* TAB 2: LIST VIEW OF INVITATIONS & ASSIGNMENTS */}
+          {/* TAB 2: LIST VIEW */}
           {activeTab === 'list' && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -681,6 +830,7 @@ export function InviteProviderModal({
                   />
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     handleResetForm();
                     setActiveTab('form');
@@ -769,6 +919,7 @@ export function InviteProviderModal({
                         <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
                           <div className="flex items-center gap-1">
                             <button
+                              type="button"
                               onClick={() => {
                                 navigator.clipboard.writeText(link);
                                 alert('Enlace mágico copiado al portapapeles.');
@@ -792,6 +943,7 @@ export function InviteProviderModal({
 
                           <div className="flex items-center gap-1">
                             <button
+                              type="button"
                               onClick={() => handleEditInvitation(inv)}
                               className="text-xs font-semibold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded-md flex items-center gap-1 cursor-pointer"
                               title="Editar invitación y asignación"
@@ -800,6 +952,7 @@ export function InviteProviderModal({
                               <span>Editar</span>
                             </button>
                             <button
+                              type="button"
                               onClick={() => handleDeleteInvitation(inv.id_invitation)}
                               className="text-xs text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
                               title="Eliminar invitación"
@@ -821,6 +974,7 @@ export function InviteProviderModal({
         <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 shrink-0">
           <span>APU-suite &bull; Gestión y Asignación de Contratistas</span>
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg transition-colors cursor-pointer"
           >
@@ -830,4 +984,6 @@ export function InviteProviderModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
