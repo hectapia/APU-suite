@@ -388,9 +388,15 @@ export default function DashboardPage() {
                 <p className="text-xs text-slate-600 leading-relaxed">
                   {selectedEvent.event_description}
                 </p>
-                <div className="flex items-center text-xs text-slate-500 gap-1.5 font-medium pt-1">
-                  <Building className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>{selectedEvent.client_name}</span>
+                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600 font-medium pt-1">
+                  <div className="flex items-center gap-1.5">
+                    <Building className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span><strong className="text-slate-700">Convocante:</strong> {selectedEvent.client_name}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-md">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                    <span><strong className="text-emerald-950">Contratista Asignado:</strong> MHEBOSAP, S.A. DE C.V.</span>
+                  </div>
                 </div>
               </div>
 

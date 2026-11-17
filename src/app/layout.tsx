@@ -31,14 +31,11 @@ export default function RootLayout({
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs text-slate-400">Contratista Activo</p>
-                <p className="text-sm font-semibold text-emerald-400">MHEBOSAP, S.A. DE C.V.</p>
-              </div>
-              <div className="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-xs text-white ring-2 ring-emerald-400/50">
-                MH
-              </div>
+            <div className="flex items-center space-x-3">
+              <span className="text-xs font-medium text-slate-400 bg-slate-800/80 border border-slate-700/80 px-3 py-1.5 rounded-lg hidden sm:inline-flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Plataforma de Licitaciones y Precios Unitarios
+              </span>
             </div>
           </div>
         </header>

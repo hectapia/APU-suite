@@ -20,10 +20,7 @@ Unitary Price Analysis (*Análisis de Precios Unitarios - APU*) and cost enginee
 ## Getting Started
 
 ### 1. Database Setup
-1. Create a project in [Supabase](https://supabase.com).
-2. Open the **SQL Editor** in your Supabase dashboard.
-3. Paste and run `supabase_setup_and_seed.sql`.
-
+Configure your database on [Supabase](https://supabase.com).
 
 ### 2. Run the Application
 ```bash
