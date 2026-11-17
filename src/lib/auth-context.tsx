@@ -117,6 +117,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginAsAdmin = (customEmail?: string, customName?: string) => {
+    // Prevent privilege escalation if currently logged in as a contractor
+    if (user && user.role === 'PROVIDER_ESTIMATOR') {
+      console.warn('Operación denegada: Un contratista no puede elevar sus privilegios a Administrador.');
+      return;
+    }
+
     const adminUser: AuthUser = {
       ...DEFAULT_ADMIN_USER,
       email: customEmail || DEFAULT_ADMIN_USER.email,
@@ -135,6 +141,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const switchRole = (newRole: UserRole) => {
+    // Invited contractors cannot switch to ADMIN
+    if (user?.role === 'PROVIDER_ESTIMATOR' && newRole === 'ADMIN') {
+      console.warn('Operación denegada: Un contratista no puede cambiar al rol de Administrador.');
+      return;
+    }
+
     if (newRole === 'ADMIN') {
       loginAsAdmin();
     } else {

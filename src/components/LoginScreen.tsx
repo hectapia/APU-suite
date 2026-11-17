@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import {
   Shield,
@@ -11,43 +12,75 @@ import {
   ArrowRight,
   CheckCircle2,
   Lock,
-  FileCheck2,
   AlertCircle,
   Loader2,
+  ExternalLink,
+  Copy,
+  Check,
+  Send,
 } from 'lucide-react';
 
 export function LoginScreen() {
-  const { loginAsAdmin, loginAsProvider } = useAuth();
+  const router = useRouter();
+  const { loginAsAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'admin' | 'provider'>('admin');
 
-  // Admin form state
-  const [adminEmail, setAdminEmail] = useState('hectapia@outlook.com');
-  const [adminName, setAdminName] = useState('Ing. Héctor Tapia (Administrador)');
-  const [adminPassword, setAdminPassword] = useState('admin123');
+  // Admin form state - strictly empty by default (no credentials pre-loaded)
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminName, setAdminName] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
 
-  // Provider form state
-  const [providerEmail, setProviderEmail] = useState('licitaciones@mhebosap.com.mx');
-  const [providerName, setProviderName] = useState('MHEBOSAP, S.A. DE C.V.');
+  // Contractor request link state - strictly empty by default
+  const [providerEmail, setProviderEmail] = useState('');
+  const [directTokenInput, setDirectTokenInput] = useState('');
+  const [showDirectToken, setShowDirectToken] = useState(false);
 
+  // Link request result state
+  const [requestResult, setRequestResult] = useState<{
+    success: boolean;
+    magicLink?: string;
+    token?: string;
+    eventTag?: string;
+    eventTitle?: string;
+    providerName?: string;
+  } | null>(null);
+
+  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adminEmail.trim()) {
-      setError('Por favor ingresa un correo de administrador.');
+    setError(null);
+
+    const emailTrim = adminEmail.trim().toLowerCase();
+    const passTrim = adminPassword.trim();
+
+    if (!emailTrim) {
+      setError('Por favor ingresa el correo del administrador.');
       return;
     }
 
+    if (!passTrim) {
+      setError('Por favor ingresa la contraseña de acceso.');
+      return;
+    }
+
+    // Verify admin email
+    if (emailTrim !== 'hectapia@outlook.com') {
+      setError('El correo ingresado no cuenta con privilegios de Administrador.');
+      return;
+    }
+
+    // Verify admin password
     const savedPassword = localStorage.getItem('apu_admin_password') || 'admin123';
-    if (adminPassword !== savedPassword) {
+    if (passTrim !== savedPassword) {
       setError('Contraseña incorrecta. Por favor verifica tus credenciales.');
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
 
       // Log sign-in to audit log
       try {
@@ -56,29 +89,79 @@ export function LoginScreen() {
         // silent fallback
       }
 
-      loginAsAdmin(adminEmail.trim(), adminName.trim());
+      loginAsAdmin(
+        adminEmail.trim(),
+        adminName.trim() || 'Ing. Héctor Tapia (Administrador)'
+      );
     } catch (err: any) {
-      setError(err?.message || 'Error al iniciar sesión.');
+      setError(err?.message || 'Error al iniciar sesión como administrador.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleProviderSubmit = async (e: React.FormEvent) => {
+  const handleRequestProviderLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!providerEmail.trim()) {
-      setError('Por favor ingresa tu correo de contratista.');
+    setError(null);
+    setRequestResult(null);
+
+    const emailTrim = providerEmail.trim().toLowerCase();
+    if (!emailTrim) {
+      setError('Por favor ingresa el correo de la empresa contratista.');
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
-      loginAsProvider(providerEmail.trim(), providerName.trim());
+      const res = await fetch('/api/auth/request-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailTrim }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'No se encontró una invitación activa para este correo.');
+      }
+
+      setRequestResult(data);
     } catch (err: any) {
-      setError(err?.message || 'Error al iniciar sesión.');
+      setError(err?.message || 'Error al solicitar el enlace de acceso.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDirectTokenSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    let token = directTokenInput.trim();
+    if (!token) {
+      setError('Por favor ingresa el token o la URL completa de tu enlace.');
+      return;
+    }
+
+    // Extract token if user pasted full URL
+    if (token.includes('token=')) {
+      try {
+        const urlObj = new URL(token);
+        token = urlObj.searchParams.get('token') || token;
+      } catch {
+        const parts = token.split('token=');
+        if (parts[1]) token = parts[1].split('&')[0];
+      }
+    }
+
+    router.push(`/auth/verify?token=${encodeURIComponent(token)}`);
+  };
+
+  const copyMagicLink = () => {
+    if (requestResult?.magicLink) {
+      navigator.clipboard.writeText(requestResult.magicLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -107,6 +190,7 @@ export function LoginScreen() {
               onClick={() => {
                 setActiveTab('admin');
                 setError(null);
+                setRequestResult(null);
               }}
               className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === 'admin'
@@ -130,7 +214,7 @@ export function LoginScreen() {
               }`}
             >
               <Building className="w-3.5 h-3.5" />
-              <span>Contratista</span>
+              <span>Contratista Invitado</span>
             </button>
           </div>
         </div>
@@ -138,8 +222,8 @@ export function LoginScreen() {
         {/* Form Body */}
         <div className="p-6 sm:p-8">
           {error && (
-            <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2 text-xs text-red-700">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2 text-xs text-red-700 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
               <span>{error}</span>
             </div>
           )}
@@ -155,9 +239,10 @@ export function LoginScreen() {
                   type="email"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
-                  placeholder="admin.licitaciones@pemex.com"
+                  placeholder="hectapia@outlook.com"
                   className="w-full text-xs font-mono border border-slate-300 rounded-xl p-3 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800"
                   required
+                  autoComplete="email"
                 />
               </div>
 
@@ -170,9 +255,9 @@ export function LoginScreen() {
                   type="text"
                   value={adminName}
                   onChange={(e) => setAdminName(e.target.value)}
-                  placeholder="Ing. Administrador de Concursos"
+                  placeholder="Ing. Héctor Tapia (Administrador)"
                   className="w-full text-xs border border-slate-300 rounded-xl p-3 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800"
-                  required
+                  autoComplete="name"
                 />
               </div>
 
@@ -182,14 +267,15 @@ export function LoginScreen() {
                     <Lock className="w-3.5 h-3.5 text-purple-600" />
                     Contraseña de Acceso
                   </span>
-                  <span className="text-[10px] text-slate-400 font-normal">Demo: admin123</span>
                 </label>
                 <input
                   type="password"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="Ingresa tu contraseña"
                   className="w-full text-xs border border-slate-300 rounded-xl p-3 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800"
                   required
+                  autoComplete="current-password"
                 />
               </div>
 
@@ -208,7 +294,7 @@ export function LoginScreen() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
-                    <span>Iniciando Sesión...</span>
+                    <span>Verificando Credenciales...</span>
                   </>
                 ) : (
                   <>
@@ -219,68 +305,154 @@ export function LoginScreen() {
               </button>
             </form>
           ) : (
-            <form onSubmit={handleProviderSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-emerald-600" />
-                  Correo Registrado del Contratista
-                </label>
-                <input
-                  type="email"
-                  value={providerEmail}
-                  onChange={(e) => setProviderEmail(e.target.value)}
-                  placeholder="licitaciones@mhebosap.com.mx"
-                  className="w-full text-xs font-mono border border-slate-300 rounded-xl p-3 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
-                  required
-                />
+            <div className="space-y-4">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-950 flex items-start gap-2.5">
+                <Key className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold text-emerald-900">Acceso Seguro mediante Enlace Mágico</p>
+                  <p className="text-[11px] text-emerald-800 leading-relaxed">
+                    Los contratistas acceden a su concurso asignado exclusivamente a través de un enlace firmado único. Introduce tu correo registrado para solicitar o verificar tu enlace de acceso.
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <Building className="w-3.5 h-3.5 text-emerald-600" />
-                  Razón Social de la Empresa
-                </label>
-                <input
-                  type="text"
-                  value={providerName}
-                  onChange={(e) => setProviderName(e.target.value)}
-                  placeholder="MHEBOSAP, S.A. DE C.V."
-                  className="w-full text-xs border border-slate-300 rounded-xl p-3 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
-                  required
-                />
-              </div>
+              {/* Request Link Form */}
+              {!requestResult ? (
+                <form onSubmit={handleRequestProviderLink} className="space-y-3.5">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-emerald-600" />
+                      Correo Registrado del Contratista
+                    </label>
+                    <input
+                      type="email"
+                      value={providerEmail}
+                      onChange={(e) => setProviderEmail(e.target.value)}
+                      placeholder="licitaciones@mhebosap.com.mx"
+                      className="w-full text-xs font-mono border border-slate-300 rounded-xl p-3 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
+                      required
+                    />
+                  </div>
 
-              <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-3 text-xs text-emerald-950 flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <p>
-                  Los contratistas acceden a su concurso asignado para capturar precios unitarios e integraciones DT-7 bajo políticas RLS.
-                </p>
-              </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Buscando Invitación Activa...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        <span>Solicitar Enlace de Acceso</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              ) : (
+                /* Verified Invitation Card with Access Button */
+                <div className="space-y-3 bg-emerald-50/70 border border-emerald-300 rounded-2xl p-4 animate-in fade-in">
+                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>¡Invitación Activa Localizada!</span>
+                  </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-sm cursor-pointer mt-2 disabled:opacity-50"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Validando Acceso...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Entrar como Contratista (MHEBOSAP)</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
+                  <div className="bg-white rounded-xl p-3 border border-emerald-200 text-xs space-y-1.5">
+                    <p className="text-slate-700">
+                      <strong>Empresa:</strong> {requestResult.providerName}
+                    </p>
+                    <p className="text-slate-700">
+                      <strong>Concurso:</strong>{' '}
+                      <span className="font-mono font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
+                        {requestResult.eventTag}
+                      </span>{' '}
+                      &mdash; {requestResult.eventTitle}
+                    </p>
+                  </div>
+
+                  <div className="pt-1 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (requestResult.token) {
+                          router.push(`/auth/verify?token=${encodeURIComponent(requestResult.token)}`);
+                        }
+                      }}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-sm cursor-pointer"
+                    >
+                      <span>Abrir APU Studio con Enlace Firmado</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={copyMagicLink}
+                      className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-emerald-700">Enlace Copiado al Portapapeles</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Copiar Enlace Mágico</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRequestResult(null)}
+                      className="text-[11px] text-slate-500 hover:text-slate-700 text-center py-1 cursor-pointer"
+                    >
+                      Probar con otro correo
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Direct Token Paste Accordion */}
+              <div className="pt-2 border-t border-slate-200/80">
+                <button
+                  type="button"
+                  onClick={() => setShowDirectToken(!showDirectToken)}
+                  className="w-full text-left text-[11px] text-slate-500 hover:text-emerald-700 flex items-center justify-between font-medium cursor-pointer"
+                >
+                  <span>¿Ya tienes un token o enlace directo?</span>
+                  <span className="text-emerald-600 font-bold">{showDirectToken ? '▲' : '▼'}</span>
+                </button>
+
+                {showDirectToken && (
+                  <form onSubmit={handleDirectTokenSubmit} className="mt-2.5 space-y-2">
+                    <input
+                      type="text"
+                      value={directTokenInput}
+                      onChange={(e) => setDirectTokenInput(e.target.value)}
+                      placeholder="Pega tu token o URL /auth/verify?token=..."
+                      className="w-full text-xs font-mono border border-slate-300 rounded-xl p-2.5 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
+                    />
+                    <button
+                      type="submit"
+                      className="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Validar y Entrar</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </form>
                 )}
-              </button>
-            </form>
+              </div>
+            </div>
           )}
         </div>
 
         {/* Footer */}
         <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 text-center text-[11px] text-slate-500">
-          APU-suite &bull; Plataforma Segura con Row Level Security (RLS) & Bitácora de Auditoría
+          APU-suite &bull; Acceso Seguro con Row Level Security (RLS) & Bitácora de Auditoría
         </div>
       </div>
     </div>

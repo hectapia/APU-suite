@@ -171,38 +171,40 @@ export function HeaderNav() {
                   </div>
                 )}
 
-                {/* Persona Switcher for testing/demo */}
-                <div className="py-1 border-b border-slate-100">
-                  <p className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Cambiar Perfil de Demostración
-                  </p>
-                  <button
-                    onClick={() => {
-                      switchRole('ADMIN');
-                      setUserDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between ${user.role === 'ADMIN' ? 'font-bold text-purple-700' : 'text-slate-600'
-                      }`}
-                  >
-                    <span>Administrador (PEMEX)</span>
-                    {user.role === 'ADMIN' && <CheckCircle2 className="w-3.5 h-3.5 text-purple-600" />}
-                  </button>
-                  <button
-                    onClick={() => {
-                      switchRole('PROVIDER_ESTIMATOR');
-                      setUserDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between ${user.role === 'PROVIDER_ESTIMATOR'
-                        ? 'font-bold text-emerald-700'
-                        : 'text-slate-600'
-                      }`}
-                  >
-                    <span>Contratista (MHEBOSAP)</span>
-                    {user.role === 'PROVIDER_ESTIMATOR' && (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    )}
-                  </button>
-                </div>
+                {/* Persona Switcher for testing/demo - Strictly restricted to Convocante Administrator */}
+                {user.email === 'hectapia@outlook.com' && (
+                  <div className="py-1 border-b border-slate-100">
+                    <p className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Vista de Demostración (Admin)
+                    </p>
+                    <button
+                      onClick={() => {
+                        switchRole('ADMIN');
+                        setUserDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between ${user.role === 'ADMIN' ? 'font-bold text-purple-700' : 'text-slate-600'
+                        }`}
+                    >
+                      <span>Administrador (PEMEX)</span>
+                      {user.role === 'ADMIN' && <CheckCircle2 className="w-3.5 h-3.5 text-purple-600" />}
+                    </button>
+                    <button
+                      onClick={() => {
+                        switchRole('PROVIDER_ESTIMATOR');
+                        setUserDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between ${user.role === 'PROVIDER_ESTIMATOR'
+                          ? 'font-bold text-emerald-700'
+                          : 'text-slate-600'
+                        }`}
+                    >
+                      <span>Contratista (MHEBOSAP)</span>
+                      {user.role === 'PROVIDER_ESTIMATOR' && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                    </button>
+                  </div>
+                )}
 
                 {/* Change Password for Admin */}
                 {user.role === 'ADMIN' && (

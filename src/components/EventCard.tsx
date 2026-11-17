@@ -7,7 +7,7 @@ import { Layers, FileText, CheckCircle2, Clock, Building, ArrowRight, PlusCircle
 interface EventCardProps {
   event: EventDashboardView;
   onOpenCatalog: () => void;
-  onAddConcept: () => void;
+  onAddConcept?: () => void;
   onInviteProvider?: () => void;
 }
 
@@ -158,14 +158,16 @@ export const EventCard: React.FC<EventCardProps> = ({
             Abrir Catálogo de Conceptos ({event.total_concepts})
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
-          <button
-            onClick={onAddConcept}
-            className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold py-2.5 px-3 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
-            title="Agregar nuevo concepto"
-          >
-            <PlusCircle className="w-4 h-4 text-emerald-600" />
-            <span className="hidden sm:inline">Agregar</span>
-          </button>
+          {onAddConcept && (
+            <button
+              onClick={onAddConcept}
+              className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold py-2.5 px-3 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Agregar nuevo concepto"
+            >
+              <PlusCircle className="w-4 h-4 text-emerald-600" />
+              <span className="hidden sm:inline">Agregar</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

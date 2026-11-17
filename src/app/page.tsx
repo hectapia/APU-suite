@@ -70,6 +70,24 @@ export default function DashboardPage() {
 
   const [isAddConceptOpen, setIsAddConceptOpen] = useState(false);
 
+  // Filter events based on role: Admins see all; Contractors see only their assigned tender
+  const filteredEvents = useMemo(() => {
+    if (!user) return [];
+    if (user.role === 'ADMIN') return events;
+    if (user.role === 'PROVIDER_ESTIMATOR') {
+      const provId = user.id_provider;
+      const provName = user.provider_name?.trim().toLowerCase();
+      const matched = events.filter((ev) => {
+        if (provId && ev.id_provider && ev.id_provider === provId) return true;
+        if (provName && ev.provider_name && ev.provider_name.trim().toLowerCase().includes(provName)) return true;
+        if (activeEvent && ev.id_event === activeEvent.id_event) return true;
+        return false;
+      });
+      return matched.length > 0 ? matched : events.slice(0, 1);
+    }
+    return events;
+  }, [events, user, activeEvent]);
+
   // Fetch all core data from Supabase
   const loadData = useCallback(async () => {
     try {
@@ -296,21 +314,29 @@ export default function DashboardPage() {
 
           {/* Grid of Event Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {events.length === 0 && !loading ? (
+            {filteredEvents.length === 0 && !loading ? (
               <div className="col-span-full p-12 text-center bg-white rounded-xl border border-slate-200 text-slate-500 text-sm">
-                No se encontraron eventos activos en la base de datos.
+                No se encontraron eventos o concursos asignados a este usuario.
               </div>
             ) : (
-              events.map((ev) => (
+              filteredEvents.map((ev) => (
                 <EventCard
                   key={ev.id_event}
                   event={ev}
                   onOpenCatalog={() => handleSelectEvent(ev)}
-                  onAddConcept={() => {
-                    handleSelectEvent(ev);
-                    setIsAddConceptOpen(true);
-                  }}
-                  onInviteProvider={() => openInviteModal(ev.id_event)}
+                  onAddConcept={
+                    user?.role === 'ADMIN'
+                      ? () => {
+                          handleSelectEvent(ev);
+                          setIsAddConceptOpen(true);
+                        }
+                      : undefined
+                  }
+                  onInviteProvider={
+                    user?.role === 'ADMIN'
+                      ? () => openInviteModal(ev.id_event)
+                      : undefined
+                  }
                 />
               ))
             )}
@@ -367,13 +393,15 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <button
-                onClick={() => setIsAddConceptOpen(true)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Agregar Concepto</span>
-              </button>
+              {user?.role === 'ADMIN' && (
+                <button
+                  onClick={() => setIsAddConceptOpen(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Agregar Concepto</span>
+                </button>
+              )}
               <button
                 onClick={loadData}
                 disabled={loading}
