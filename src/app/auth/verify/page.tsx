@@ -16,6 +16,39 @@ function VerifyTokenContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<any>(null);
 
+  // Quick link request state
+  const [renewEmail, setRenewEmail] = useState('');
+  const [renewLoading, setRenewLoading] = useState(false);
+  const [renewError, setRenewError] = useState<string | null>(null);
+
+  const handleRenew = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!renewEmail.trim()) {
+      setRenewError('Ingresa un correo electrónico.');
+      return;
+    }
+    try {
+      setRenewLoading(true);
+      setRenewError(null);
+      const res = await fetch('/api/auth/request-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: renewEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'No se encontró invitación para este correo.');
+      }
+      if (data.token) {
+        router.push(`/auth/verify?token=${encodeURIComponent(data.token)}`);
+      }
+    } catch (err: any) {
+      setRenewError(err.message || 'Error solicitando enlace.');
+    } finally {
+      setRenewLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!token) {
       setStatus('error');
@@ -153,9 +186,39 @@ function VerifyTokenContent() {
               <p>{errorMessage}</p>
             </div>
 
-            <p className="text-xs text-slate-500">
-              Si recibiste esta invitación, solicita al Administrador que te genere un nuevo enlace.
-            </p>
+            <div className="pt-3 border-t border-slate-200 text-left space-y-2">
+              <label className="block text-[11px] font-bold text-slate-700">
+                ¿Deseas reactivar o validar tu enlace con tu correo?
+              </label>
+              <form onSubmit={handleRenew} className="space-y-2">
+                <input
+                  type="email"
+                  value={renewEmail}
+                  onChange={(e) => setRenewEmail(e.target.value)}
+                  placeholder="licitaciones@mhebosap.com.mx"
+                  className="w-full text-xs border border-slate-300 rounded-lg p-2.5 font-mono bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <button
+                  type="submit"
+                  disabled={renewLoading}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {renewLoading ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Validando invitación...</span>
+                    </>
+                  ) : (
+                    <span>Reactivar y Entrar con mi Correo</span>
+                  )}
+                </button>
+                {renewError && (
+                  <p className="text-[11px] text-red-600 bg-red-50 p-2 rounded border border-red-200">
+                    {renewError}
+                  </p>
+                )}
+              </form>
+            </div>
 
             <Link
               href="/"

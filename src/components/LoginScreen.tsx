@@ -192,11 +192,10 @@ export function LoginScreen() {
                 setError(null);
                 setRequestResult(null);
               }}
-              className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeTab === 'admin'
-                  ? 'bg-purple-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'admin'
+                ? 'bg-purple-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+                }`}
             >
               <Shield className="w-3.5 h-3.5" />
               <span>Administrador</span>
@@ -207,11 +206,10 @@ export function LoginScreen() {
                 setActiveTab('provider');
                 setError(null);
               }}
-              className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeTab === 'provider'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'provider'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+                }`}
             >
               <Building className="w-3.5 h-3.5" />
               <span>Contratista Invitado</span>

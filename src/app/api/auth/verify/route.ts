@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
+import { getInvitationByToken, recordInvitationInStore } from '@/lib/invitation-store';
 
 export async function GET(req: NextRequest) {
   try {
@@ -24,21 +25,18 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 1. Query invitation
-    const { data: invitation, error: invErr } = await supabaseAdmin
-      .from('event_invitation')
-      .select('*, event(*), provider(*)')
-      .eq('token', token)
-      .limit(1)
-      .maybeSingle();
+    const cleanToken = token.trim();
 
-    if (invErr || !invInvitationValid(invitation)) {
+    // 1. Resolve invitation through dual-layer store
+    const invitation = await getInvitationByToken(cleanToken);
+
+    if (!invitation || !invInvitationValid(invitation)) {
       await logAudit({
         userRole: 'ANONYMOUS',
         action: 'DENIED',
         entityType: 'AUTH_VERIFY',
-        entityId: token.substring(0, 10),
-        details: { reason: 'Token inválido, expirado o no encontrado.' },
+        entityId: cleanToken.substring(0, 10),
+        details: { reason: 'Token inválido, expirado o no encontrado.', token: cleanToken },
         ipAddress: meta.ipAddress,
         userAgent: meta.userAgent,
       });
@@ -49,46 +47,60 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 2. Mark invitation accepted
-    await supabaseAdmin
-      .from('event_invitation')
-      .update({
-        is_accepted: true,
-        accepted_at: new Date().toISOString(),
-      })
-      .eq('id_invitation', invitation.id_invitation);
+    // 2. Mark invitation accepted in DB and cache
+    invitation.is_accepted = true;
+    invitation.accepted_at = new Date().toISOString();
+    recordInvitationInStore(invitation);
+
+    try {
+      await supabaseAdmin
+        .from('event_invitation')
+        .update({
+          is_accepted: true,
+          accepted_at: new Date().toISOString(),
+        })
+        .eq('token', cleanToken);
+    } catch {
+      // non-blocking
+    }
 
     // 3. Find or create app_user
-    const email = invitation.invited_email;
-    const providerName = invitation.provider?.provider_name || 'Contratista';
+    const email = invitation.invited_email.toLowerCase();
+    const providerName = invitation.provider?.provider_name || 'MHEBOSAP, S.A. DE C.V.';
     const fullName = invitation.provider?.provider_representative || `Estimador (${providerName})`;
+    const providerId = invitation.id_provider || 1;
 
-    let userId = 'prov-' + (invitation.id_provider || '001');
+    let userId = 'prov-' + providerId;
 
-    const { data: existingUser } = await supabaseAdmin
-      .from('app_user')
-      .select('*')
-      .eq('email', email)
-      .limit(1)
-      .maybeSingle();
-
-    if (existingUser) {
-      userId = existingUser.id_user;
-    } else {
-      const { data: newUser } = await supabaseAdmin
+    try {
+      const { data: existingUser } = await supabaseAdmin
         .from('app_user')
-        .insert({
-          email,
-          full_name: fullName,
-          role: 'PROVIDER_ESTIMATOR',
-          is_active: true,
-        })
-        .select()
+        .select('*')
+        .eq('email', email)
+        .limit(1)
         .maybeSingle();
 
-      if (newUser) {
-        userId = newUser.id_user;
+      if (existingUser) {
+        userId = existingUser.id_user;
+      } else {
+        const { data: newUser } = await supabaseAdmin
+          .from('app_user')
+          .insert({
+            email,
+            full_name: fullName,
+            role: 'PROVIDER_ESTIMATOR',
+            id_provider: providerId,
+            is_active: true,
+          })
+          .select()
+          .maybeSingle();
+
+        if (newUser) {
+          userId = newUser.id_user;
+        }
       }
+    } catch {
+      // non-blocking fallback
     }
 
     // 4. Record Audit Log for successful magic link sign-in
@@ -101,7 +113,7 @@ export async function GET(req: NextRequest) {
       details: {
         email,
         id_event: invitation.id_event,
-        id_provider: invitation.id_provider,
+        id_provider: providerId,
         provider_name: providerName,
       },
       ipAddress: meta.ipAddress,
@@ -113,7 +125,7 @@ export async function GET(req: NextRequest) {
       email,
       full_name: fullName,
       role: 'PROVIDER_ESTIMATOR',
-      id_provider: invitation.id_provider,
+      id_provider: providerId,
       provider_name: providerName,
     };
 

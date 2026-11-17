@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
+import { recordInvitationInStore } from '@/lib/invitation-store';
 
 // GET: Fetch existing invitations, providers, and event assignments
 export async function GET(req: NextRequest) {
@@ -169,11 +170,33 @@ export async function POST(req: NextRequest) {
       console.warn('Notice inserting event_invitation:', invErr.message);
     }
 
-    // 5. Build Magic Link
+    // 5. Register in dual-layer store
+    recordInvitationInStore({
+      id_invitation: invitation?.id_invitation || `inv-${Date.now()}`,
+      id_event: eventId,
+      id_provider: providerId,
+      invited_email: normalizedEmail,
+      token,
+      expires_at: expiresAt,
+      is_accepted: false,
+      created_at: new Date().toISOString(),
+      event: invitation?.event || {
+        id_event: eventId,
+        tag_event: `PEP-DG-SAP-${String(eventId).padStart(3, '0')}-2026`,
+        event_type: 'Concurso / Licitación Asignada',
+      },
+      provider: invitation?.provider || {
+        id_provider: providerId,
+        provider_name: providerName || 'Contratista Asignado',
+        provider_representative: fullName,
+      },
+    });
+
+    // 6. Build Magic Link
     const origin = req.nextUrl.origin || 'http://localhost:3000';
     const magicLink = `${origin}/auth/verify?token=${token}`;
 
-    // 6. Write Audit Record
+    // 7. Write Audit Record
     const meta = extractRequestMeta(req);
     await logAudit({
       userId: userId || 'admin-001',
