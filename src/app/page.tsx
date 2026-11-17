@@ -16,6 +16,7 @@ import { ApuWorkbenchModal } from '@/components/ApuWorkbenchModal';
 import { DirectPriceModal } from '@/components/DirectPriceModal';
 import { AddConceptModal } from '@/components/AddConceptModal';
 import { CatalogPickerModal, CatalogPickerType } from '@/components/CatalogPickerModal';
+import { InviteProviderModal } from '@/components/InviteProviderModal';
 import {
   AlertCircle,
   RefreshCw,
@@ -58,6 +59,8 @@ export default function DashboardPage() {
   const [isDirectPriceOpen, setIsDirectPriceOpen] = useState(false);
 
   const [isAddConceptOpen, setIsAddConceptOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteEventId, setInviteEventId] = useState<number | undefined>(undefined);
 
   // Fetch all core data from Supabase
   const loadData = useCallback(async () => {
@@ -282,6 +285,10 @@ export default function DashboardPage() {
                     handleSelectEvent(ev);
                     setIsAddConceptOpen(true);
                   }}
+                  onInviteProvider={() => {
+                    setInviteEventId(ev.id_event);
+                    setIsInviteModalOpen(true);
+                  }}
                 />
               ))
             )}
@@ -385,7 +392,22 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-md">
                     <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-                    <span><strong className="text-emerald-950">Contratista Asignado:</strong> {user?.role === 'PROVIDER_ESTIMATOR' && user.provider_name ? user.provider_name : 'MHEBOSAP, S.A. DE C.V.'}</span>
+                    <span>
+                      <strong className="text-emerald-950">Contratista Asignado:</strong>{' '}
+                      {selectedEvent.provider_name || (user?.role === 'PROVIDER_ESTIMATOR' && user.provider_name ? user.provider_name : 'MHEBOSAP, S.A. DE C.V.')}
+                    </span>
+                    {user?.role === 'ADMIN' && (
+                      <button
+                        onClick={() => {
+                          setInviteEventId(selectedEvent.id_event);
+                          setIsInviteModalOpen(true);
+                        }}
+                        className="ml-2 text-[10px] font-bold text-emerald-700 hover:text-emerald-950 underline cursor-pointer"
+                        title="Vincular o editar contratista asignado a este concurso"
+                      >
+                        (Editar / Vincular)
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -510,6 +532,15 @@ export default function DashboardPage() {
         catalogLabor={catalogLabor}
         catalogEquipment={catalogEquipment}
         onItemCreated={handleCatalogItemCreated}
+      />
+
+      {/* MODAL 5: INVITE / LINK PROVIDER MODAL */}
+      <InviteProviderModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        events={events}
+        defaultEventId={inviteEventId}
+        onEventUpdated={loadData}
       />
     </div>
   );

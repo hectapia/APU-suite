@@ -2,18 +2,20 @@
 
 import React from 'react';
 import { EventDashboardView } from '@/types/database';
-import { Layers, FileText, CheckCircle2, Clock, Building, ArrowRight, PlusCircle } from 'lucide-react';
+import { Layers, FileText, CheckCircle2, Clock, Building, ArrowRight, PlusCircle, Mail, UserCheck } from 'lucide-react';
 
 interface EventCardProps {
   event: EventDashboardView;
   onOpenCatalog: () => void;
   onAddConcept: () => void;
+  onInviteProvider?: () => void;
 }
 
 export const EventCard: React.FC<EventCardProps> = ({
   event,
   onOpenCatalog,
   onAddConcept,
+  onInviteProvider,
 }) => {
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group">
@@ -49,9 +51,27 @@ export const EventCard: React.FC<EventCardProps> = ({
           {event.event_description}
         </p>
 
-        <div className="mt-4 flex items-center text-xs text-slate-500 gap-1.5 font-medium">
-          <Building className="w-4 h-4 text-slate-400 shrink-0" />
-          <span className="truncate">{event.client_name}</span>
+        <div className="mt-4 flex items-center justify-between text-xs text-slate-500 font-medium gap-2">
+          <div className="flex items-center gap-1.5 truncate">
+            <Building className="w-4 h-4 text-slate-400 shrink-0" />
+            <span className="truncate">{event.client_name}</span>
+          </div>
+
+          {onInviteProvider && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onInviteProvider();
+              }}
+              className="text-[11px] font-semibold text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+              title="Vincular o invitar contratista a este concurso"
+            >
+              <Mail className="w-3 h-3 text-emerald-600" />
+              <span className="truncate max-w-[130px]">
+                {event.provider_name ? event.provider_name : 'Asignar Contratista'}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 

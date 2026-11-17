@@ -222,6 +222,7 @@ export function HeaderNav() {
         isOpen={isInviteOpen}
         onClose={() => setIsInviteOpen(false)}
         events={events}
+        defaultEventId={activeEvent?.id_event}
       />
       <AuditLogModal
         isOpen={isAuditOpen}

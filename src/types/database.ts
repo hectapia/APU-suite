@@ -58,10 +58,12 @@ export interface Event {
   event_type: string;
   event_description: string;
   id_client: number;
+  id_provider?: number | null;
   status: EventStatus;
   submission_deadline?: string;
   created_at: string;
   client?: Client;
+  provider?: Provider;
 }
 
 export interface EventInvitation {
@@ -74,6 +76,8 @@ export interface EventInvitation {
   is_accepted: boolean;
   accepted_at?: string;
   created_at: string;
+  event?: Event;
+  provider?: Provider;
 }
 
 export interface Concept {
@@ -202,6 +206,8 @@ export interface EventDashboardView {
   event_type: string;
   event_description: string;
   client_name: string;
+  id_provider?: number | null;
+  provider_name?: string | null;
   status: EventStatus;
   submission_deadline?: string;
   total_concepts: number;

@@ -44,6 +44,12 @@ CREATE INDEX IF NOT EXISTS idx_event_invitation_token ON public.event_invitation
 CREATE INDEX IF NOT EXISTS idx_event_invitation_email ON public.event_invitation(invited_email);
 
 
+-- 2.1 VINCULACIÓN DIRECTA DE CONTRATISTA A CONCURSO (event.id_provider)
+-- ------------------------------------------------------------------------------
+ALTER TABLE public.event ADD COLUMN IF NOT EXISTS id_provider INT REFERENCES public.provider(id_provider) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_event_provider ON public.event(id_provider);
+
+
 -- 3. TABLA: event_provider_assignment (Asignación granular de concurso a contratista)
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.event_provider_assignment (
